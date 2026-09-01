@@ -1,0 +1,1024 @@
+<!-- THE BLUEPRINT — interactive strength, size & athletic transformation system -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1316; --bg2:#11181C; --surface:#161F24; --surface2:#1C272D;
+    --line:#26343B; --line2:#33454E;
+    --ink:#ECE7DD; --muted:#8A989F; --faint:#5C6A71;
+    --ember:#EE7A2E; --ember-d:#C85F1C; --ember-glow:rgba(238,122,46,.16);
+    --steel:#65B4C9; --steel-d:#3E8497;
+    --green:#84B06A; --red:#D5694F; --gold:#D9A441;
+    --r:14px; --r-s:9px;
+    --shadow:0 14px 40px -18px rgba(0,0,0,.7);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(238,122,46,.05), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(101,180,201,.05), transparent 55%),
+      var(--bg);
+    color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5}
+  ::selection{background:var(--ember-glow);color:var(--ink)}
+  h1,h2,h3,h4{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.5px;margin:0;line-height:1.08}
+  .mono{font-family:'JetBrains Mono',monospace}
+  a{color:var(--steel);text-decoration:none}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select{font-family:inherit}
+
+  .shell{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+  nav.side{background:linear-gradient(180deg,var(--bg2),var(--bg));border-right:1px solid var(--line);
+    position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:20px 14px;gap:3px;z-index:20;overflow-y:auto}
+  .brand{padding:6px 10px 16px;border-bottom:1px solid var(--line);margin-bottom:10px}
+  .brand .k{font-family:'Oswald';font-size:24px;font-weight:700;letter-spacing:2px;line-height:1}
+  .brand .k b{color:var(--ember)}
+  .brand .sub{font-size:9.5px;letter-spacing:2.6px;color:var(--faint);text-transform:uppercase;margin-top:5px}
+  .navbtn{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-s);
+    color:var(--muted);font-weight:500;font-size:13.5px;text-align:left;width:100%;transition:.15s;position:relative}
+  .navbtn .ic{width:18px;text-align:center;font-size:14px;opacity:.85}
+  .navbtn:hover{background:var(--surface);color:var(--ink)}
+  .navbtn.on{background:var(--surface2);color:var(--ink)}
+  .navbtn.on::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--ember);box-shadow:0 0 12px var(--ember)}
+  .side .phase-chip{margin-top:auto;padding:11px 12px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface);font-size:11px}
+  .side .phase-chip .l{color:var(--faint);text-transform:uppercase;letter-spacing:1.4px;font-size:9px}
+  .side .phase-chip .v{font-family:'Oswald';font-size:15px;color:var(--ember);margin-top:3px}
+
+  main{padding:34px 40px 90px;max-width:1140px;width:100%}
+  .page{display:none}
+  .page.on{display:block;animation:fade .35s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto}}
+
+  .ttl{font-size:12.5px;letter-spacing:4px;text-transform:uppercase;color:var(--ember);font-family:'Oswald';font-weight:600}
+  .h-big{font-size:40px;margin:6px 0 4px;letter-spacing:1px}
+  .lead{color:var(--muted);max-width:720px;font-size:14.5px}
+  .lead b{color:var(--ink)}
+
+  .card{background:linear-gradient(180deg,var(--surface),var(--bg2));border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}}
+  .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+  .ch h3{font-size:20px;letter-spacing:.7px}
+  .eyebrow{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);font-weight:600}
+  .sec-intro{color:var(--muted);font-size:13.5px;margin:0 0 16px;max-width:760px}
+
+  .stat{padding:16px 18px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+  .stat .lab{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--faint)}
+  .stat .num{font-family:'Oswald';font-size:32px;line-height:1;margin-top:6px}
+  .stat .num small{font-size:13px;color:var(--muted);font-family:'JetBrains Mono'}
+  .stat .delta{font-size:11px;margin-top:5px;font-family:'JetBrains Mono'}
+  .up{color:var(--green)}.dn{color:var(--red)}
+
+  .bar{height:10px;background:var(--bg);border:1px solid var(--line);border-radius:20px;overflow:hidden;position:relative}
+  .bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--ember-d),var(--ember));box-shadow:0 0 14px var(--ember-glow);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+  .barwrap{display:flex;flex-direction:column;gap:7px}
+  .barrow{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+  .barrow b{color:var(--ink);font-family:'JetBrains Mono'}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:var(--r-s);background:var(--ember);color:#1a0e06;font-weight:600;font-size:13px;transition:.15s;border:1px solid transparent}
+  .btn:hover{background:#ff8a3d;transform:translateY(-1px)}
+  .btn.ghost{background:transparent;border-color:var(--line2);color:var(--ink)}
+  .btn.ghost:hover{background:var(--surface2);transform:none}
+  .btn.sm{padding:6px 11px;font-size:12px}
+  .btn.steel{background:var(--steel);color:#04181d}.btn.steel:hover{background:#79c6da}
+  .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-s);padding:3px;gap:3px;flex-wrap:wrap}
+  .seg button{padding:8px 15px;border-radius:6px;font-size:13px;font-weight:600;color:var(--muted)}
+  .seg button.on{background:var(--surface2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line2)}
+  input[type=number],input[type=text],input[type=date],select{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;font-size:13px;font-family:'JetBrains Mono';width:100%}
+  input:focus,select:focus{outline:2px solid var(--ember-glow);border-color:var(--ember)}
+  label.fld{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+
+  .exo{border:1px solid var(--line);border-radius:var(--r);margin-bottom:11px;overflow:hidden;background:var(--surface)}
+  .exo .top{display:flex;align-items:center;gap:14px;padding:13px 16px;cursor:pointer;transition:.15s}
+  .exo .top:hover{background:var(--surface2)}
+  .exo .idx{font-family:'Oswald';font-size:18px;color:var(--ember);width:24px}
+  .exo .nm{flex:1;font-weight:600;font-size:14.5px}
+  .exo .scheme{font-family:'JetBrains Mono';font-size:12px;color:var(--steel);white-space:nowrap}
+  .exo .chev{color:var(--faint);transition:.2s;font-size:12px}
+  .exo.open .chev{transform:rotate(90deg)}
+  .exo .body{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
+  .exo.open .body{display:block}
+  .why{font-size:12.5px;color:var(--muted);padding:12px 0;border-bottom:1px dashed var(--line);margin-bottom:12px}
+  .why b{color:var(--steel);font-weight:600}
+  .cue{display:inline-block;font-size:11px;background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:3px 10px;margin:3px 4px 0 0;color:var(--muted)}
+  .alt{font-size:11.5px;color:var(--faint);margin-top:10px}
+  .alt b{color:var(--steel)}
+  .setlog{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-top:12px}
+  .setlog .sf{width:74px}
+  .logline{font-size:11px;color:var(--faint);margin-top:8px;font-family:'JetBrains Mono'}
+  .logline b{color:var(--green)}
+
+  .chk{display:flex;align-items:flex-start;gap:12px;padding:11px 13px;border:1px solid var(--line);border-radius:var(--r-s);margin-bottom:8px;background:var(--surface);transition:.15s;cursor:pointer}
+  .chk:hover{border-color:var(--line2)}
+  .chk.done{background:rgba(132,176,106,.07);border-color:rgba(132,176,106,.35)}
+  .box{width:21px;height:21px;border:2px solid var(--line2);border-radius:6px;flex-shrink:0;margin-top:1px;display:grid;place-items:center;transition:.15s;font-size:13px;color:transparent}
+  .chk.done .box{background:var(--green);border-color:var(--green);color:#0c1408}
+  .chk .ct{flex:1}.chk .ct .t{font-weight:600;font-size:14px}
+  .chk.done .ct .t{text-decoration:line-through;color:var(--muted)}
+  .chk .ct .d{font-size:12px;color:var(--muted);margin-top:2px}
+  .chk .tag{font-size:10px;font-family:'JetBrains Mono';color:var(--steel);align-self:center;white-space:nowrap}
+
+  .phase{border:1px solid var(--line);border-radius:var(--r);margin-bottom:16px;overflow:hidden}
+  .phase .ph-head{display:flex;gap:16px;align-items:center;padding:18px 20px;background:var(--surface);cursor:pointer}
+  .phase .ph-num{font-family:'Oswald';font-size:40px;font-weight:700;color:var(--ember);line-height:.8;width:54px;text-align:center;opacity:.9}
+  .phase.locked .ph-num{color:var(--faint);opacity:.4}
+  .phase .ph-t{flex:1}.phase .ph-t h3{font-size:21px}
+  .phase .ph-t .when{font-family:'JetBrains Mono';font-size:11px;color:var(--steel);margin-top:3px}
+  .phase .ph-body{padding:4px 20px 18px;background:var(--bg2)}
+  .phase .ph-body p.aim{font-size:13.5px;color:var(--muted);margin:14px 0}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:'Oswald';font-weight:500;color:var(--faint);font-size:11px;letter-spacing:1px;text-transform:uppercase}
+  td.mono,.tm{font-family:'JetBrains Mono';color:var(--steel)}
+  td b{color:var(--ink)}
+
+  .chart{width:100%;height:200px}
+  .chart line.grid{stroke:var(--line);stroke-width:1}
+  .chart path.ln{fill:none;stroke:var(--ember);stroke-width:2.5;filter:drop-shadow(0 2px 6px var(--ember-glow))}
+  .chart circle{fill:var(--ember)}
+  .chart text{fill:var(--faint);font-size:10px;font-family:'JetBrains Mono'}
+  .chart path.goal{stroke:var(--steel);stroke-width:1.5;stroke-dasharray:5 5;fill:none;opacity:.6}
+
+  .note{font-size:12px;color:var(--faint);background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--steel);border-radius:8px;padding:11px 14px;margin-top:14px}
+  .note b{color:var(--ink)}
+  .warn{border-left-color:var(--ember)}
+  .pill{font-size:10px;font-family:'JetBrains Mono';padding:2px 8px;border-radius:20px;border:1px solid var(--line2);color:var(--muted)}
+  .pill.e{border-color:var(--ember);color:var(--ember)}
+  .pill.s{border-color:var(--steel);color:var(--steel)}
+  .saved{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--green);color:var(--green);padding:10px 16px;border-radius:10px;font-size:13px;font-family:'JetBrains Mono';opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:50}
+  .saved.show{opacity:1;transform:none}
+  .tip-list{list-style:none;padding:0;margin:0}
+  .tip-list li{padding:9px 0 9px 22px;position:relative;font-size:13.5px;border-bottom:1px solid var(--line);color:var(--muted)}
+  .tip-list li:last-child{border-bottom:none}
+  .tip-list li::before{content:"▸";position:absolute;left:0;color:var(--ember)}
+  .tip-list li b{color:var(--ink)}
+
+  .menubtn{display:none}
+  @media(max-width:880px){
+    .shell{grid-template-columns:1fr}
+    nav.side{position:fixed;left:0;top:0;bottom:0;width:236px;transform:translateX(-100%);transition:.25s}
+    nav.side.open{transform:none}
+    main{padding:64px 18px 90px}
+    .menubtn{display:flex;position:fixed;top:14px;left:14px;z-index:30;width:42px;height:42px;border-radius:10px;background:var(--surface2);border:1px solid var(--line);align-items:center;justify-content:center;font-size:18px}
+    .h-big{font-size:30px}
+    .scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:15;display:none}
+    .scrim.on{display:block}
+  }
+
+  /* ---------------- PRINT ---------------- */
+  @media print{
+    @page{margin:1.4cm}
+    body{background:#fff!important}
+    nav.side,.menubtn,.scrim,.saved{display:none!important}
+    .shell{display:block!important}
+    main{max-width:none!important;padding:0!important}
+    .page{display:none!important}
+    .page.on{display:block!important;animation:none!important}
+    *{color:#111!important;box-shadow:none!important;text-shadow:none!important}
+    .card,.stat,.exo,.phase,.chk,.note{background:#fff!important;border:1px solid #bbb!important;break-inside:avoid;page-break-inside:avoid}
+    .ttl,.h-big,h1,h2,h3,h4,.exo .idx,.ph-num,.stat .num{color:#111!important}
+    .scheme,.tm,td.mono{color:#444!important}
+    input,.setlog,.menubtn,.btn,.seg,.bar,.chart{display:none!important}
+    .why b,.note b,.pill{color:#111!important}
+    a{color:#111!important}
+    .print-break{page-break-before:always}
+    .printhide{display:none!important}
+    .screenonly{display:none!important}
+    .printonly{display:block!important}
+    .pweek{display:grid!important;grid-template-columns:1fr 1fr;gap:10px}
+  }
+  .printonly{display:none}
+  .day-hero{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:6px 0 18px}
+  .day-hero .dnum{font-family:'Oswald';font-size:54px;font-weight:700;color:var(--ember);line-height:.8}
+  .day-hero .dmiss{font-size:14px;color:var(--muted)}
+  .simple-move{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .simple-move:last-child{border-bottom:none}
+  .simple-move .smn{flex:1;font-weight:600;font-size:14.5px}
+  .simple-move .smt{font-family:'JetBrains Mono';font-size:13px;color:var(--steel);white-space:nowrap}
+  .daychip{padding:9px 0;border-radius:8px;font-family:'Oswald';font-size:14px;font-weight:600;letter-spacing:1px;
+    border:1px solid var(--line);background:var(--surface);color:var(--muted);flex:1;text-align:center;min-width:42px}
+  .daychip.on{background:var(--ember);color:#1a0e06;border-color:var(--ember)}
+  .daychip.today::after{content:"•";color:var(--steel);margin-left:3px}
+  .motiv{font-family:'Oswald';font-size:18px;font-weight:500;letter-spacing:.4px;line-height:1.3;
+    color:var(--ink);border-left:3px solid var(--ember);padding:10px 0 10px 16px;margin:0 0 18px;
+    background:linear-gradient(90deg,var(--ember-glow),transparent 70%)}
+  .ind{padding:14px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+  .ind .il{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:var(--faint)}
+  .ind .iv{font-family:'Oswald';font-size:30px;line-height:1;margin-top:6px}
+  .ind .iv small{font-size:13px;color:var(--muted);font-family:'JetBrains Mono'}
+  .ind .ix{font-size:11px;color:var(--muted);margin-top:6px;font-family:'JetBrains Mono'}
+</style>
+
+<button class="menubtn" id="menubtn">☰</button>
+<div class="scrim" id="scrim"></div>
+
+<div class="shell">
+  <nav class="side" id="side">
+    <div class="brand">
+      <div class="k">THE&nbsp;<b>BLUEPRINT</b></div>
+      <div class="sub">Wide · Strong · Explosive</div>
+    </div>
+    <button class="navbtn on" data-go="dash"><span class="ic">◈</span> Dashboard</button>
+    <button class="navbtn" data-go="daily"><span class="ic">◎</span> Daily Plan — Simple</button>
+    <button class="navbtn" data-go="mobility"><span class="ic">✦</span> Mobility &amp; Back</button>
+    <button class="navbtn" data-go="train"><span class="ic">▤</span> Training</button>
+    <button class="navbtn" data-go="schedule"><span class="ic">▦</span> Weekly Schedule</button>
+    <button class="navbtn" data-go="recovery"><span class="ic">☾</span> Recovery &amp; Sleep</button>
+    <button class="navbtn" data-go="nutrition"><span class="ic">◍</span> Nutrition &amp; Fuel</button>
+    <button class="navbtn" data-go="timeline"><span class="ic">⟁</span> Timeline &amp; Phases</button>
+    <button class="navbtn" data-go="metrics"><span class="ic">📏</span> Metrics</button>
+    <button class="navbtn" data-go="print"><span class="ic">🖨</span> Print Master Sheet</button>
+    <div class="phase-chip">
+      <div class="l">Current Phase</div>
+      <div class="v" id="navphase">Phase 1 — Baseline</div>
+    </div>
+  </nav>
+  <main id="main"></main>
+</div>
+<div class="saved" id="toast">✓ Saved</div>
+
+<script>
+/* ============================================================
+   THE BLUEPRINT — persistence + state
+   Uses browser localStorage (per-browser, per-device — see README).
+   ============================================================ */
+const KEY='blueprint:state:v2';
+const store={
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ console.warn('localStorage unavailable:',e); return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ console.warn('localStorage write failed (storage full or blocked):',e); return false; } }
+};
+const todayStr=()=>new Date().toISOString().slice(0,10);
+const DEFAULTS={
+  profile:{startWeight:167,goalWeight:195,heightIn:74,age:22,activity:1.6},
+  weightLog:[{date:todayStr(),w:167}],
+  measure:[], toeTouch:[], mobilityDone:{}, trainLog:{}, benchmarks:{1:[],2:[],3:[]},
+  nutritionLog:{}, sleepLog:[], custom:{}
+};
+let S=null, saveTimer=null;
+function persist(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ store.set(KEY,JSON.stringify(S)); toast(); },350); }
+function toast(){ const t=document.getElementById('toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1100); }
+
+/* ============================================================
+   MOBILITY — daily, anywhere, ~12 min, exact durations
+   ============================================================ */
+const MOBILITY=[
+  {t:"90/90 Diaphragmatic Breathing",d:"Lie on back, calves on a chair/couch (knees 90°). 8 slow breaths: 4s in through nose, 6–8s out, ribs pulled down.",tag:"90 sec",why:"Your pain on stretch is mostly protective <b>neural guarding</b>, not short tissue. Long exhales switch the nervous system out of fight-or-flight so the hamstrings stop bracing. This is the gate that makes everything after it work."},
+  {t:"Cat–Cow + Segmental Roll",d:"On all fours. Slowly round then arch, moving one vertebra at a time, top to bottom.",tag:"8 reps",why:"Restores <b>segment-by-segment control</b> of the lumbar spine. Painful backs move as one rigid block; this teaches yours to bend smoothly under no load."},
+  {t:"World's Greatest Stretch",d:"Lunge, hand inside front foot, drop elbow toward floor, then rotate that arm to the ceiling. Alternate.",tag:"5/side",why:"One move that opens <b>hip flexors, adductors, T-spine and ankles</b> at once — the four areas that, when locked, dump stress into your low back."},
+  {t:"90/90 Hip Switches",d:"Sit, both knees bent 90°, one in front one out to the side. Rotate knees side to side, chest tall.",tag:"10/side",why:"Builds <b>internal + external hip rotation</b>. Locked hips force the lumbar spine to rotate in athletic movement — the #1 driver of your back strain on the court or field."},
+  {t:"Hip CARs",d:"Stand tall, drive one knee up, draw the slowest, biggest circle you can with the hip. Reverse.",tag:"4/side ea way",why:"Actively expands <b>usable, controllable</b> hip range. Active range is what your body will let you use under load — passive range you can't control just gets you hurt."},
+  {t:"Banded Active Straight-Leg Raise",d:"On back, band/towel around one foot. Actively pull the straight leg up as far as possible, lower slow.",tag:"10/side",why:"<b>Loaded contract-relax</b> for the hamstrings: you fire the hip flexors to reflexively relax the hamstring, gaining length with zero painful passive stretching."},
+  {t:"90/90 Hamstring Active Reach",d:"One leg forward, heel down, knee soft. Hinge from the hip and reach hands toward the toe, return.",tag:"8/side",why:"Lengthens the hamstring through an <b>active hinge</b> — rehearsing the exact toe-touch pattern in a position your spine can stay safe in."},
+  {t:"Couch Stretch (active)",d:"Rear shin up against a wall/couch, front foot planted. Squeeze the rear glute, tuck the pelvis. Hold.",tag:"30s/side",why:"Releases tight <b>hip flexors and quads</b>. Tight hip flexors yank your pelvis into a tilt that grinds the low back — free them and the pain often drops fast."},
+  {t:"Knee-to-Wall Ankle Mob",d:"Toes ~4in from wall, drive knee past toes to touch the wall without the heel lifting. Inch back as you improve.",tag:"10/side",why:"Stiff ankles steal depth from squats and jumps, forcing the back and knees to compensate. Free ankles = a squat and a landing your joints tolerate — and a higher vert."},
+  {t:"Jefferson Curl (light)",d:"Stand on a box, hold a light weight (or nothing). Roll down one vertebra at a time, then restack to stand.",tag:"5 reps",why:"The single best <b>toe-touch builder</b>. Gradually loaded spinal flexion teaches the back it's safe to round under control, switching off the guarding reflex. Bodyweight only to start."},
+  {t:"McGill Big 3",d:"Curl-up (hold 8s ×4), Side plank (3×15s/side), Bird-dog (5/side, hold 3s). Brace, breathe, don't hold breath.",tag:"3 min",why:"Builds <b>endurance-based spinal stability</b> — Dr. McGill's protocol. A back that resists fatigue resists strain. This is your daily insurance policy; never skip it, gym or not."}
+];
+const TOE_MILES=[
+  {gap:25,label:"Mid-shin",sub:"Starting point — own the hinge before the floor"},
+  {gap:15,label:"Lower shin"},
+  {gap:8,label:"Ankle bone"},
+  {gap:0,label:"Fingertips to floor",sub:"The goal line"},
+  {gap:-5,label:"Flat palms",sub:"Elite — stretch goal"}
+];
+
+/* ============================================================
+   GYM PROGRAM — 4-day Upper/Lower; width, back, grip, traps
+   each exercise carries a no-gym ALT inline too
+   ============================================================ */
+const GYM={
+  "Upper A — Width & Press":[
+    {id:"g_ohp",nm:"Seated DB Shoulder Press",s:"3 × 8–10",why:"Front + lateral delt mass and overhead strength for spiking and rebounding. Seated DBs keep load off your low back vs a standing barbell press.",cues:["Slight bench incline","Don't fully flare elbows","Stop an inch short of lockout"],alt:"Pike push-ups, or backpack standing press"},
+    {id:"g_lat1",nm:"DB Lateral Raise",s:"4 × 12–15",why:"Your #1 WIDTH exercise. The lateral delt builds the 3D shoulder and the V-taper illusion. High volume, light, strict.",cues:["Lead with the elbow","Slight 'pour the jug' tilt","Slow negative, no swing"],alt:"Backpack/water-jug lateral raise"},
+    {id:"g_row1",nm:"Chest-Supported DB Row",s:"4 × 10–12",why:"Back THICKNESS (mid-traps, rhomboids) with the chest pad absorbing all spinal load — zero risk to your back. Your most important row.",cues:["Drive elbows toward hips","1s squeeze at top","Full stretch at bottom"],alt:"Inverted row under a table, or backpack row"},
+    {id:"g_inc",nm:"Incline DB Press",s:"3 × 8–10",why:"Upper chest + front delt. The DB path lets the shoulders move naturally — the joint-friendly horizontal pressing you need.",cues:["~30° bench","Elbows ~45°","Control the stretch"],alt:"Decline/feet-elevated push-ups"},
+    {id:"g_pull1",nm:"Wide-Grip Lat Pulldown",s:"3 × 10–12",why:"Direct lat WIDTH and your pull-up progression. Wide grip biases the upper-outer lat that flares the taper.",cues:["Pull to collarbone","Drive elbows down & back","No leaning back"],alt:"Pull-ups (bar, branch, door frame)"},
+    {id:"g_lat2",nm:"Cable Lateral Raise",s:"3 × 15",why:"Constant tension through the whole range — cables load the bottom where DBs go light. Width finisher.",cues:["Cable behind the back","One arm at a time","Burn over weight"],alt:"Lean-away band lateral raise"},
+    {id:"g_face",nm:"Face Pull",s:"3 × 15–20",why:"Rear delts + external rotators = the 'back' of wide shoulders and shoulder INSURANCE. Balances all your pressing.",cues:["Pull to the forehead","Rotate pinkies back","Keep elbows high"],alt:"Band face pull, or prone Y-T-W raises"}
+  ],
+  "Lower A — Back-Safe Strength + Vert":[
+    {id:"g_jump",nm:"Box Jump / Pogo Hops",s:"4 × 3 (P2+)",why:"PRIME for VERT and explosiveness. Done fresh, before the heavy work, these train fast force — the basis of jumping in volleyball/basketball. Quality over quantity, full rest. Add in Phase 2.",cues:["Land soft & quiet","Reset every rep","Step down, never jump down"],alt:"Broad jumps / tuck jumps on grass"},
+    {id:"g_gob",nm:"Goblet Squat",s:"3 × 10–12",why:"Teaches an upright, back-friendly squat. The front-loaded DB forces a vertical torso, sparing the lumbar spine while you rebuild the pattern.",cues:["Elbows inside knees","Sit between the hips","Heels glued down"],alt:"Backpack goblet squat or tempo air squat"},
+    {id:"g_lp",nm:"Leg Press / Hack Squat",s:"3 × 12",why:"Heavy quad/glute loading with the back fully supported. How you train legs HARD without spinal compression.",cues:["Feet mid-platform","Don't round the low back","Stop before the glutes lift"],alt:"Bulgarian split squat (backpack loaded)"},
+    {id:"g_rdl",nm:"DB Romanian Deadlift (light)",s:"3 × 10",why:"Re-grooves the HINGE your tight hamstrings stole. Start light — it's a mobility + strength drill before it's a strength lift.",cues:["Push hips BACK","Soft knees","Stop at first hamstring stretch — don't chase the floor yet"],alt:"Single-leg RDL, bodyweight or backpack"},
+    {id:"g_curl",nm:"Leg Curl",s:"3 × 12",why:"Direct hamstring size. Strong hamstrings protect the knee, balance the quads, and prevent the #1 athletic injury (hamstring strains).",cues:["Slow negative","Full squeeze","Toes neutral"],alt:"Nordic curl negatives (anchor feet)"},
+    {id:"g_ext",nm:"45° Back Extension",s:"3 × 12–15",why:"Builds bulletproof, endurant ERECTORS in a supported range. A strong low back is the opposite of a painful one.",cues:["Round then extend slowly","Squeeze glutes at top","Bodyweight first"],alt:"Superman holds / reverse hyper on a bed edge"},
+    {id:"g_calf1",nm:"Standing Calf Raise",s:"4 × 12–15",why:"Calves drive jumping and need volume + deep stretch. Strong, mobile calves also fix the ankle stiffness feeding your back issues.",cues:["Full stretch at bottom","2s squeeze at top","No bouncing"],alt:"Single-leg calf raise off a step"}
+  ],
+  "Upper B — Width, Pull & Grip":[
+    {id:"g_pu",nm:"Pull-Up / Assisted Pull-Up",s:"3 × AMRAP",why:"King of back width + grip + overhead pulling for 'farm' tasks. Band/machine assist until bodyweight reps come.",cues:["Full dead hang start","Chest to bar","Control the descent"],alt:"Doorway/towel rows or inverted rows"},
+    {id:"g_lat3",nm:"Machine / Cable Lateral Raise",s:"4 × 15",why:"Second weekly lateral-delt hit from a new angle. Width is won through frequency — delts recover fast and love volume.",cues:["Smooth tempo","Pause at the top","Match both sides"],alt:"Backpack lateral raise"},
+    {id:"g_seal",nm:"Seal Row / Chest-Supported Row",s:"4 × 10",why:"Pure mid-back thickness, torso fully supported — removes momentum AND spinal load. Hits traps/rhomboids clean.",cues:["Elbows wide for upper back","Pause at the chest","No hip drive"],alt:"Inverted row, feet elevated"},
+    {id:"g_flat",nm:"Flat DB Press",s:"3 × 8–10",why:"Your main horizontal press — dumbbells only, as you specified. Bigger stretch and a shoulder-friendly path vs a barbell.",cues:["Wrists stacked over elbows","Lower to chest line","Don't slam the bottom"],alt:"Standard / archer push-ups"},
+    {id:"g_sap",nm:"Straight-Arm Pulldown",s:"3 × 12–15",why:"Isolates the lats in their lengthened range and teaches you to FEEL the lat — pure width work most people skip.",cues:["Stiff arms","Slight hinge","Squeeze lats, not triceps"],alt:"Band straight-arm pulldown"},
+    {id:"g_shrug",nm:"DB Shrug / Trap-Bar Shrug",s:"3 × 12–15",why:"Upper-TRAP thickness — the muscle that frames the neck and screams strength. Also stabilises the shoulder under carries.",cues:["Straight up, don't roll","2s hold at top","Heavy is fine here"],alt:"Backpack shrugs / loaded carry holds"},
+    {id:"g_grip",nm:"Dead Hang + Plate Pinch",s:"3 × max hold",why:"Direct GRIP and forearm work — grip is the bottleneck for everything 'functional': carrying, hauling, holding a bat. Crushing grip also boosts whole-body force output.",cues:["Hang full, shoulders active","Pinch plates smooth-side out","Time every set, beat it"],alt:"Towel dead hang / backpack-handle pinch carry"}
+  ],
+  "Lower B — Power, Carries & Posterior":[
+    {id:"g_dj",nm:"Depth Jump / Broad Jump",s:"4 × 3 (P3)",why:"Reactive POWER for max vert — the stretch-shortening cycle that makes you spring off the floor. Advanced; add only in Phase 3 once landings are clean. Full rest between reps.",cues:["Minimal ground contact","Stick the landing","Stop if form degrades"],alt:"Broad jumps / bounding on grass"},
+    {id:"g_bss",nm:"Bulgarian Split Squat",s:"3 × 8–10/leg",why:"Single-leg strength fixes side-to-side imbalances (injury insurance) and loads legs hard with DBs — no spinal bar needed.",cues:["Rear foot elevated","Roughly vertical front shin","Slow down, drive up"],alt:"Backpack Bulgarian split squat"},
+    {id:"g_ht",nm:"DB Hip Thrust",s:"3 × 10–12",why:"Glute strength = the engine of jumping, sprinting and hauling, plus a huge back-pain protector. Trains hip extension with zero spinal load.",cues:["Chin tucked","Full lockout squeeze","Ribs down"],alt:"Single-leg hip thrust off a couch"},
+    {id:"g_tb",nm:"Trap-Bar Deadlift (progression goal)",s:"3 × 6–8",why:"Your safe road back to heavy pulling — neutral handles + centred load keep the bar in line with your spine, far kinder than a conventional deadlift. Build TOTAL-body & grip strength. Add only once the hinge is pain-free (Phase 2+).",cues:["Push the floor away","Neutral spine","Light & perfect first"],alt:"Heavy backpack/DB RDL or kettlebell deadlift"},
+    {id:"g_farm",nm:"Farmer's Carry",s:"4 × 30–40m heavy",why:"THE functional-strength move: grip, traps, core and total-body bracing in one. Directly transfers to hauling and carrying anything.",cues:["Stand tall, ribs down","Crush the handles","Short, fast steps"],alt:"Heavy backpack + water-jug carry"},
+    {id:"g_calf2",nm:"Seated Calf Raise",s:"3 × 15",why:"Hits the soleus the standing version misses. Complete calves round out the legs and lock down ankle stability for landings.",cues:["Deep stretch","Pause bottom & top","Full reps only"],alt:"Bent-knee single-leg calf raise"},
+    {id:"g_core",nm:"Hanging Leg Raise + Pallof Press",s:"3 × 10 / 10/side",why:"Anti-extension + anti-rotation CORE — the kind that protects the spine and transfers force in rotational sports (bat, spike, shot).",cues:["No swinging on raises","Resist rotation on Pallof","Brace, breathe"],alt:"Hollow-body hold + band/towel Pallof"}
+  ]
+};
+
+/* ============================================================
+   TRAVEL / NO-EQUIPMENT — full standalone program
+   ============================================================ */
+const TRAVEL={
+  "Push (Delts & Chest)":[
+    {id:"t_pike",nm:"Pike Push-Up",s:"4 × 8–12",why:"The bodyweight overhead press — hips high, head between hands. Loads front/side delts for width with zero gear. Elevate the feet to progress.",cues:["Hips to ceiling","Head past the hands","Control the descent"],alt:"Wall handstand push-up to progress"},
+    {id:"t_pseudo",nm:"Pseudo-Planche Push-Up",s:"3 × 6–10",why:"Hands by the waist, lean forward — dumps load onto the front delts and serratus. Brutal width + pressing stimulus, no equipment.",cues:["Hands low & turned out","Lean forward","Protract the shoulders"],alt:"Regular push-up if not ready"},
+    {id:"t_arch",nm:"Archer Push-Up",s:"3 × 8/side",why:"Builds unilateral pressing strength toward a one-arm push-up. Shoulder-friendly and scalable anywhere.",cues:["Shift weight to working arm","Other arm straight","Full range"],alt:"Close-grip push-up"},
+    {id:"t_bplat",nm:"Backpack Lateral Raise",s:"4 × 15",why:"Load a backpack with books/water and raise — your portable WIDTH builder. The shoulder width work never has to stop.",cues:["Lead with the elbow","Slow tempo","Match both sides"],alt:"Water jugs, one per hand"},
+    {id:"t_wall",nm:"Wall Walk / Handstand Hold",s:"3 × 20–30s",why:"Overhead delt strength + shoulder stability + core under bodyweight — a huge combined stimulus.",cues:["Walk feet up the wall","Squeeze everything","Breathe"],alt:"Pike hold if no wall"}
+  ],
+  "Pull (Back, Traps & Grip)":[
+    {id:"t_pu",nm:"Pull-Up / Towel Pull-Up",s:"4 × AMRAP",why:"Back WIDTH + GRIP anywhere — a bar, a branch, a door frame, a beam. Towel over the bar doubles grip work.",cues:["Full hang","Lead with the elbows","Slow descent"],alt:"Doorway rows / table rows if no bar"},
+    {id:"t_inv",nm:"Inverted Row (table/bar)",s:"4 × 12",why:"Horizontal pull for back THICKNESS off a sturdy table or low bar. The flatter your body, the harder it gets.",cues:["Body rigid like a plank","Pull chest to the edge","Squeeze the blades"],alt:"Backpack bent-over row"},
+    {id:"t_bprow",nm:"Backpack Row + Shrug",s:"4 × 12",why:"Loaded row + trap shrug anywhere a backpack exists. Keeps back thickness and trap size progressing on the road.",cues:["Hinge, flat back","Row to the hips","Add a shrug pulse at top"],alt:"Single-arm suitcase row"},
+    {id:"t_ytw",nm:"Prone Y-T-W Raises",s:"3 × 10 each",why:"Face-down raises for lower traps + rear delts — the detail that completes a wide back and bulletproofs the shoulder.",cues:["Thumbs up","Lift from the back","Slow & strict"],alt:"Band pull-aparts"},
+    {id:"t_hang",nm:"Dead Hang",s:"3 × max",why:"Pure GRIP + a passive decompression for the spine. Grip strength caps everything functional, so train it daily if you can.",cues:["Full hang, shoulders active","Time it, beat it","Towel for extra challenge"],alt:"Backpack-strap pinch hold"}
+  ],
+  "Legs, Power & Core":[
+    {id:"t_jump",nm:"Broad / Tuck Jumps",s:"4 × 3–5",why:"VERT and explosiveness, no equipment. Train fast force fresh, before the grind. Land soft on grass when possible.",cues:["Max effort each rep","Stick the landing","Full rest between sets"],alt:"Pogo hops for ankle stiffness"},
+    {id:"t_split",nm:"Split Squat (backpack)",s:"3 × 12/leg",why:"Single-leg strength + balance with a loaded backpack. Keeps the legs growing and the hips healthy on the road.",cues:["Drop straight down","Front heel down","Tall torso"],alt:"Step-ups onto a chair"},
+    {id:"t_slrdl",nm:"Single-Leg RDL",s:"3 × 10/leg",why:"Bodyweight hinge + balance — hamstrings and the hip-hinge your back needs, with built-in core demand.",cues:["Hips square","Reach the leg back","Slow & controlled"],alt:"Add a backpack to load it"},
+    {id:"t_nord",nm:"Nordic Curl Negative",s:"3 × 5",why:"Anchor the feet, lower slowly. The most powerful hamstring strengthener that exists — and the #1 hamstring-injury preventer for athletes.",cues:["Resist the whole way down","Hands ready to catch","Quality over quantity"],alt:"Sliding leg curl on a towel"},
+    {id:"t_wall2",nm:"Wall Sit",s:"3 × 45s",why:"Quad strength-endurance — joint-friendly and brutal. Builds leg density with zero load.",cues:["Thighs parallel","Back flat on the wall","Breathe through the burn"],alt:"Tempo air squats, 4s down"},
+    {id:"t_mc3",nm:"McGill Big 3 + Hollow Hold",s:"daily",why:"Curl-up, side plank, bird-dog, hollow hold — your portable spinal-stability + core protocol. Do it every day; this keeps the back pain gone.",cues:["Brace, don't hold breath","Endurance not max","Perfect form"],alt:"Add a Pallof press with a band"}
+  ]
+};
+
+/* ============================================================
+   PLYO / EXPLOSIVENESS guidance + GRIP guidance (page content)
+   ============================================================ */
+const ATHLETIC={
+  plyo:[
+    {t:"When",d:"1–2× per week, only in Phase 2+. Always FRESH — first thing in a lower-body session, after warm-up, before the heavy work. Never when fatigued."},
+    {t:"Volume",d:"Low. 3–5 reps per set, 3–5 sets, full recovery (60–90s) between sets. Plyos train the nervous system, not the muscle to failure. More is worse, not better."},
+    {t:"Progression",d:"Pogo hops → broad jumps → box jumps → tuck jumps → (Phase 3) depth jumps & bounding. Master soft, silent, balanced landings before adding reactive intensity."},
+    {t:"Why it works",d:"Jumping is force ÷ time. Heavy strength work raises max force; plyos teach you to express it fast — together they build vert. Landing mechanics also bulletproof knees and ankles."}
+  ],
+  grip:[
+    {t:"Carries",d:"Farmer's carries (or heavy backpack + jugs) 2× per week — the single best builder of crushing grip, traps and total-body strength."},
+    {t:"Hangs",d:"Dead hangs to failure, 2–3× per week. Add a towel over the bar to torch the forearms and decompress the spine at the same time."},
+    {t:"Pinch & thick bar",d:"Plate pinches and fat-grip work train the often-neglected thumb and open-hand strength that carries over to real-world holding."},
+    {t:"Why",d:"Grip is the bottleneck for everything functional — and a strong grip neurologically increases force output in your bigger lifts (irradiation). Train it, don't strap past it."}
+  ]
+};
+
+/* ============================================================
+   SLEEP & RECOVERY
+   ============================================================ */
+const SLEEP={
+  needHrs:"8.5–9.5",
+  points:[
+    {t:"You grow when you sleep, not when you lift",d:"Lifting is the signal; sleep is the build. ~70% of daily growth hormone releases in deep sleep, and that's when muscle protein synthesis peaks. As a 22-year-old hard-gainer training hard, aim for <b>8.5–9.5 hours</b> — under 7 measurably cuts muscle gain and raises injury risk."},
+    {t:"Consistency beats total hours",d:"Same sleep and wake time (±30 min) every day, weekends included. A steady circadian rhythm improves deep sleep quality more than 'catching up' ever can."},
+    {t:"Protect the last hour",d:"No screens 45–60 min before bed (blue light delays melatonin). Cool (~18°C/65°F), dark, quiet room. Caffeine has a ~6-hour half-life — cut it off by early afternoon."},
+    {t:"Naps are a tool",d:"A 20-minute nap (or a full 90-min cycle) on hard training days boosts recovery and power output. Avoid 30–60 min naps — you wake mid-deep-sleep groggy."},
+    {t:"Fuel the night",d:"A slow-protein feed before bed (casein, Greek yogurt, cottage cheese, milk) drip-feeds amino acids through your longest fasting window so you build all night."}
+  ],
+  recovery:[
+    {t:"Active recovery, not nothing",d:"On off days: a 20–40 min walk, easy bike, or zone-2 cardio plus the full mobility routine. Blood flow clears soreness faster than sitting still."},
+    {t:"Deload every 6–8 weeks",d:"One lighter week — cut sets ~40% and weight ~20%, keep moving. It lets accumulated fatigue clear so the next block grows. Skipping deloads is how people stall and get hurt."},
+    {t:"Watch the warning lights",d:"Persistent soreness >72h, sleep getting worse, resting heart rate climbing, mood dropping, strength sliding 2 sessions running = under-recovered. Add a rest day or pull a deload forward."},
+    {t:"Manage soreness smart",d:"Light movement, mobility, hydration, protein and sleep beat ice baths or painkillers for actual recovery. Foam-roll to feel better, not to 'fix' anything."}
+  ]
+};
+
+/* ============================================================
+   SUPPLEMENTS & FUELING (food-first)
+   ============================================================ */
+const SUPPS=[
+  {n:"Creatine Monohydrate",dose:"5 g daily, every day",tier:"core",why:"The most proven supplement in existence. Increases strength, power (your vert), muscle size and training volume. No need to 'load' — 5g/day any time, with or without food. Cheap, safe long-term. Plain monohydrate; don't pay for fancier forms.",who:"Everyone training for size/strength"},
+  {n:"Whey / Casein Protein",dose:"1–2 scoops as needed",tier:"core",why:"Not magic — just convenient, fast protein to hit your daily target when whole food is impractical. Whey post-workout or in shakes; casein (or dairy) before bed for the slow overnight drip. Use it to fill gaps, not to replace meals.",who:"Anyone struggling to hit protein from food"},
+  {n:"Creatine note for hard-gainers",dose:"—",tier:"core",why:"Creatine pulls water into the muscle, so expect 1–2 lb of fast scale weight in the first weeks. That's normal and good (fuller muscles), not fat — don't panic at the jump.",who:"Context"},
+  {n:"Vitamin D3",dose:"1000–2000 IU daily",tier:"useful",why:"Most people at northern latitudes are low, especially in winter with little sun. Supports testosterone, bone strength and immune function. Take with a fatty meal.",who:"Almost everyone at northern latitudes"},
+  {n:"Omega-3 (fish oil)",dose:"1–2 g EPA+DHA daily",tier:"useful",why:"Supports joint and heart health and may modestly aid recovery and muscle protein synthesis. Useful if you don't eat fatty fish 2–3×/week.",who:"Low oily-fish eaters"},
+  {n:"Caffeine (pre-workout)",dose:"100–200 mg, 30–45 min pre",tier:"useful",why:"Reliably boosts strength, power and focus for a session. Coffee works fine. Skip it within ~8 h of bed so it doesn't wreck the sleep that's building you.",who:"Pre hard sessions; not daily-required"},
+  {n:"Electrolytes / Salt",dose:"with water, esp. on long/hot sessions",tier:"useful",why:"Sodium, potassium and magnesium drive hydration, pumps and cramping prevention. Important once you add conditioning or a half-marathon block.",who:"Heavy sweaters, high-volume days"},
+  {n:"Magnesium (glycinate)",dose:"200–400 mg evening",tier:"optional",why:"Many lifters run low; can aid sleep quality and muscle relaxation. The glycinate form is gentle on the stomach.",who:"Poor sleepers"}
+];
+const PROTEIN_SOURCES=[
+  {f:"Chicken breast (cooked)",p:"31 g / 100g",note:"Lean staple"},
+  {f:"Lean beef / bison",p:"26 g / 100g",note:"+ iron, creatine, zinc"},
+  {f:"Eggs",p:"6 g each",note:"Whole eggs — yolks are fine & nutritious"},
+  {f:"Greek yogurt",p:"10 g / 100g",note:"Great pre-bed casein"},
+  {f:"Cottage cheese",p:"11 g / 100g",note:"Slow protein, pre-bed"},
+  {f:"Milk (whole)",p:"8 g / cup",note:"Cheap calories + protein, hard-gainer gold"},
+  {f:"Salmon / fish",p:"22 g / 100g",note:"+ omega-3s"},
+  {f:"Whey powder",p:"24 g / scoop",note:"Convenience, post-workout"},
+  {f:"Lentils / beans",p:"9 g / 100g cooked",note:"Plant protein + fibre + carbs"},
+  {f:"Tofu / tempeh",p:"12–19 g / 100g",note:"Plant complete protein"}
+];
+
+/* ============================================================
+   TIMELINE — phases with explicit differences
+   ============================================================ */
+const PHASES=[
+  {n:1,t:"Mobility & Structural Baseline",when:"Weeks 1–8",
+   aim:"Eliminate the back pain and unlock the hips BEFORE chasing size. Build the movement foundation, learn the lifts, and ramp work capacity. Loads stay submaximal on purpose — form and consistency are the only goals.",
+   diff:{Reps:"10–15",Effort:"3–4 reps in reserve",Sets:"10–12 / muscle / wk",Power:"None — landings & pogos only",Cardio:"2× zone-2, 20 min",Calories:"+250–350 (lean ramp)",Focus:"Move well · work capacity"},
+   bench:["Daily mobility done 5+ days/week","Zero back pain during all training","Toe-touch gap within 8 cm (ankle bone)","Pain-free bodyweight hinge & goblet squat to depth","10 strict push-ups · 5 assisted pull-ups","Soft, silent, balanced jump landings","Bodyweight ~172–175 lb"]},
+  {n:2,t:"Hypertrophy & Work Capacity",when:"Months 3–9",
+   aim:"The mass-building engine. Now that you move well, drive volume on the delts and back, run a steady surplus, and add load weekly. This is where the V-taper appears and most of your 25–30 lb arrives. Plyos and the trap-bar deadlift enter here.",
+   diff:{Reps:"8–12",Effort:"1–2 reps in reserve",Sets:"14–18 / muscle / wk",Power:"1×/wk box & broad jumps",Cardio:"1–2× zone-2, 20–30 min",Calories:"+350–500 surplus",Focus:"Size · width · thickness"},
+   bench:["DB shoulder press 70 lb × 8 each","Chest-supported row 80 lb × 10","8–10 strict bodyweight pull-ups","Flat DB press ~75 lb × 8 each","Trap-bar deadlift pain-free at ~1× bodyweight","60s+ dead hang (grip)","Shoulder width +2.5 cm; bodyweight ~183–188 lb"]},
+  {n:3,t:"Absolute Strength, Power & Density",when:"Months 10–18+",
+   aim:"Convert size into hard, usable strength and finish the lean bulk. Loads climb, main-lift reps drop, carries get heavy, and reactive power work maxes the vert. Dial the surplus down to keep gains lean and reach 190–200 lb of solid, capable mass.",
+   diff:{Reps:"5–8 main · 8–12 accessory",Effort:"1–3 reps in reserve",Sets:"12–16 / muscle / wk",Power:"2×/wk depth jumps & bounds",Cardio:"1× + optional run build",Calories:"+200–300, then maintain",Focus:"Strength · power · density"},
+   bench:["Weighted pull-up +45 lb × 5","DB shoulder press 85–90 lb × 6 each","Trap-bar deadlift ~2× bodyweight, pain-free","Farmer's carry bodyweight/hand × 40 m","Visible, proportional V-taper at lean bodyfat","Standing vertical up 4–6 in from baseline","Bodyweight 190–200 lb · zero injuries"]}
+];
+
+/* ============================================================
+   WEEKLY SCHEDULE — optimal layout
+   ============================================================ */
+const WEEK=[
+  {d:"Mon",main:"Upper A — Width & Press",sub:"AM mobility (12 min) · PM lift",type:"lift",tag:"Lift"},
+  {d:"Tue",main:"Lower A — Strength + Vert",sub:"Jumps fresh → squat → posterior · McGill Big 3",type:"lift",tag:"Lift"},
+  {d:"Wed",main:"Recovery + Mobility",sub:"Full mobility · 20–40 min zone-2 walk/bike · 8 dead hangs",type:"rest",tag:"Recover"},
+  {d:"Thu",main:"Upper B — Pull & Grip",sub:"AM mobility · PM lift · carries",type:"lift",tag:"Lift"},
+  {d:"Fri",main:"Lower B — Power & Carries",sub:"Jumps fresh → split squat → carries · McGill Big 3",type:"lift",tag:"Lift"},
+  {d:"Sat",main:"Optional Pump or Sport",sub:"Delts/arms pump, or go play ball — that's your conditioning",type:"opt",tag:"Optional"},
+  {d:"Sun",main:"Full Rest",sub:"Mobility only · meal prep · 9+ hrs sleep",type:"rest",tag:"Rest"}
+];
+const DAY_DETAIL={
+  "Mon":["12-min mobility routine (AM or pre-lift)","Upper A — full session, log every set","Optional: 10 min easy walk to wind down"],
+  "Tue":["Pogo hops / box jumps FRESH (Phase 2+) — 4×3","Lower A — goblet squat, leg press, RDL, hamstrings, calves","McGill Big 3 to finish","Hydrate + protein within ~2 h"],
+  "Wed":["Full 12-min mobility + extra hip/hamstring work","20–40 min zone-2 (nose-breathing pace) walk or bike","3 dead hangs to failure for grip + decompression","Early night — bank the sleep"],
+  "Thu":["12-min mobility","Upper B — pull-ups, rows, lateral raises, grip work","Farmer's carries 4×40 m","Log everything"],
+  "Fri":["Broad/depth jumps FRESH (Phase 2/3) — 4×3","Lower B — split squat, hip thrust, trap-bar (P2+), carries","Core: hanging leg raise + Pallof","McGill Big 3"],
+  "Sat":["Choice: a delt + arm pump session (20–30 min), OR","Play basketball / volleyball / catch — sport IS your fun conditioning","Either way: mobility + a good stretch after"],
+  "Sun":["Complete rest from lifting","12-min mobility only, keep it gentle","Meal prep for the week","Prioritise 9+ hours of sleep tonight"]
+};
+
+/* ============================================================
+   SIMPLE / UNIVERSAL — memorize one thing per weekday
+   Bodyweight-first (with a gym swap), same every week,
+   add a rep or a little weight whenever it feels easy.
+   ============================================================ */
+const SIMPLE={
+  "Mon":{title:"PUSH — Shoulders & Chest",mission:"Build wide, capped shoulders. This is your width day.",type:"lift",
+    bw:[["Pike push-ups","4 × 8–12"],["Pseudo-planche push-ups","3 × 8"],["Backpack lateral raises","4 × 15"],["Wall / pike handstand hold","3 × 20s"],["Push-ups (burnout)","2 × max"]],
+    gym:[["DB shoulder press","3 × 8–10"],["Incline DB press","3 × 10"],["DB lateral raise","4 × 12–15"],["Cable lateral raise","3 × 15"],["Face pull","3 × 20"]]},
+  "Tue":{title:"LEGS & JUMP",mission:"Strong legs and spring. Jumps first while you're fresh.",type:"lift",
+    bw:[["Broad / box jumps (fresh)","4 × 3"],["Backpack squats","4 × 12"],["Single-leg RDL","3 × 10/leg"],["Calf raises (off a step)","4 × 15"],["Wall sit","3 × 45s"]],
+    gym:[["Box jumps (fresh)","4 × 3"],["Goblet squat / leg press","3 × 12"],["DB Romanian deadlift","3 × 10"],["Leg curl","3 × 12"],["Standing calf raise","4 × 15"]]},
+  "Wed":{title:"RECOVER",mission:"No lifting. Move blood, loosen up, bank sleep.",type:"rest",
+    bw:[["Daily mobility (below)","full ~8 min"],["Easy walk or bike","20–40 min"],["Dead hang for grip","3 × max"]],
+    gym:[["Daily mobility (below)","full ~8 min"],["Easy incline walk / bike","20–40 min"],["Dead hang for grip","3 × max"]]},
+  "Thu":{title:"PULL — Back & Grip",mission:"Thick, wide back and a crushing grip. Your other key day.",type:"lift",
+    bw:[["Pull-ups (or table rows)","4 × max"],["Inverted rows (table/bar)","4 × 12"],["Backpack row + shrug","4 × 12"],["Dead hang","3 × max"],["Prone Y-T-W raises","3 × 10"]],
+    gym:[["Pull-ups / lat pulldown","4 × 8–10"],["Chest-supported row","4 × 10"],["DB shrug","3 × 15"],["Farmer's carry","4 × 40m"],["Face pull","3 × 20"]]},
+  "Fri":{title:"POWER & CARRIES",mission:"Full-body explosive day. Jumps, carries, core.",type:"lift",
+    bw:[["Broad / tuck jumps (fresh)","4 × 3"],["Push-ups","4 × max"],["Backpack split squat","3 × 10/leg"],["Heavy carry (backpack+jugs)","4 × 40m"],["Hollow hold + Pallof","3 × 30s"]],
+    gym:[["Box jumps (fresh)","4 × 3"],["Bulgarian split squat","3 × 8/leg"],["Hip thrust","3 × 12"],["Farmer's carry","4 × 40m"],["Hanging leg raise","3 × 10"]]},
+  "Sat":{title:"PLAY or PUMP",mission:"Go play ball — or a quick arm + delt pump. Keep it fun.",type:"opt",
+    bw:[["Basketball / volleyball / catch","30–60 min"],["OR backpack curls + lateral raises","3 × 15 each"],["Mobility + stretch after","~8 min"]],
+    gym:[["Play your sport","30–60 min"],["OR DB curls + lateral raises + triceps","3 × 12–15 each"],["Mobility + stretch after","~8 min"]]},
+  "Sun":{title:"REST",mission:"Full day off. Mobility, food prep, big sleep.",type:"rest",
+    bw:[["Gentle mobility only","~8 min"],["Meal prep for the week","—"],["Sleep 9+ hours tonight","priority"]],
+    gym:[["Gentle mobility only","~8 min"],["Meal prep for the week","—"],["Sleep 9+ hours tonight","priority"]]}
+};
+const SIMPLE_MOBILITY=[
+  ["Belly breathing (on back, calves up)","1 min"],
+  ["World's greatest stretch","5/side"],
+  ["90/90 hip switches","10/side"],
+  ["Active hamstring reach (hinge & reach)","8/side"],
+  ["Jefferson curl / slow toe reach","5 slow"],
+  ["McGill Big 3 (curl-up, side plank, bird-dog)","~2 min"]
+];
+const ORDER=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const JS_DAY=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]; // getDay() index → key
+
+/* ============================================================
+
+   RENDER ENGINE
+   ============================================================ */
+const $=s=>document.querySelector(s);
+const el=h=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstElementChild;};
+const main=$('#main');
+const fmt=n=>Math.round(n).toLocaleString();
+function curWeight(){ return S.weightLog.length?S.weightLog[S.weightLog.length-1].w:S.profile.startWeight; }
+function currentPhase(){ const w=curWeight(); if(w>=188)return 3; if(w>=176)return 2; return 1; }
+function pct(v,a,b){ return Math.max(0,Math.min(100,(v-a)/(b-a)*100)); }
+function macros(){
+  const w=curWeight(),act=S.profile.activity,cm=S.profile.heightIn*2.54,kg=w/2.205;
+  const bmr=10*kg+6.25*cm-5*S.profile.age+5, tdee=bmr*act;
+  const cal=Math.round((tdee+420)/10)*10, protein=Math.round(w*1.0), fat=Math.round(w*0.45);
+  const carbs=Math.round((cal-protein*4-fat*9)/4);
+  return {cal,protein,fat,carbs,tdee:Math.round(tdee)};
+}
+
+/* ---- motivation + live indicators (data-driven) ---- */
+const MOTIVATION=[
+  "Detrained, not done. The athlete is still in there — go wake him up.",
+  "Wide shoulders are built one boring lateral raise at a time. Stack the reps.",
+  "You don't have to feel like it. You just have to start the first set.",
+  "Every rep today is a withdrawal from your old self and a deposit in the new one.",
+  "Consistency is the cheat code. Show up on the easy days too.",
+  "The back pain leaves the way it came — through the work you do every day.",
+  "You're not lifting weights. You're building the frame you'll live in for decades.",
+  "Small plates, big future. Add one rep, add one pound, repeat for two years.",
+  "Discipline is choosing what you want most over what you want now. Eat the meal. Do the set.",
+  "Nobody ever regretted the workout they showed up for. Go earn the shower.",
+  "The jump gets higher, the bag gets lighter, the shirt gets tighter. Keep going.",
+  "Fuel like you mean it. You can't build a wide back on an empty tank.",
+  "Sleep is the most anabolic thing you'll do today. Win the night, win tomorrow.",
+  "Your future self is watching through your eyes right now. Make him proud."
+];
+function motivationLine(){ const doy=Math.floor((Date.now()-new Date(new Date().getFullYear(),0,0))/864e5); return MOTIVATION[doy%MOTIVATION.length]; }
+function hasMob(ds){ const a=S.mobilityDone[ds]; return !!(a&&a.some(Boolean)); }
+function mobilityStreak(){ let s=0; const d=new Date(); if(!hasMob(todayStr())) d.setDate(d.getDate()-1);
+  while(true){ const ds=d.toISOString().slice(0,10); if(hasMob(ds)){s++;d.setDate(d.getDate()-1);} else break; } return s; }
+function weekStart(){ const n=new Date(); const off=(n.getDay()+6)%7; const m=new Date(n); m.setDate(n.getDate()-off); m.setHours(0,0,0,0); return m; }
+function liftsThisWeek(){ const m=weekStart(); const set=new Set(); Object.values(S.trainLog).forEach(arr=>arr.forEach(e=>{ if(new Date(e.date)>=m) set.add(e.date); })); return set.size; }
+function nextPhaseInfo(){ const w=curWeight(); if(w<176)return{lb:Math.max(0,176-w),label:"to Phase 2"}; if(w<188)return{lb:Math.max(0,188-w),label:"to Phase 3"}; return{lb:0,label:"final phase — finish strong"}; }
+
+/* ---------------- DASHBOARD ---------------- */
+function pgDash(){
+  const w=curWeight(),p=S.profile,ph=currentPhase(),m=macros();
+  const gained=w-p.startWeight, remain=p.goalWeight-w;
+  return `<div class="page on" id="p-dash">
+    <div class="ttl">The Master Plan</div>
+    <h1 class="h-big">Welcome back. Let's build.</h1>
+    <div class="motiv" style="margin-top:14px">"${motivationLine()}"</div>
+    <p class="lead">Detrained ≠ starting from zero — you're a former athlete with muscle memory waiting to switch back on. This map is built around your exact targets: <b style="color:var(--ember)">wide shoulders</b>, a thick back, a crushing grip, strong legs and traps, and the explosive power for ball sports — all on a back that needs respect and dumbbell-only pressing.</p>
+    <div class="grid g4" style="margin-top:24px">
+      <div class="stat"><div class="lab">Bodyweight</div><div class="num">${w}<small> lb</small></div><div class="delta ${gained>=0?'up':'dn'}">${gained>=0?'▲':'▼'} ${Math.abs(gained).toFixed(1)} lb from start</div></div>
+      <div class="stat"><div class="lab">To Goal</div><div class="num">${remain.toFixed(0)}<small> lb</small></div><div class="delta">target ${p.goalWeight} lb lean</div></div>
+      <div class="stat"><div class="lab">Phase</div><div class="num">${ph}<small> / 3</small></div><div class="delta" style="color:var(--ember)">${PHASES[ph-1].t.split('&')[0].split(',')[0].trim()}</div></div>
+      <div class="stat"><div class="lab">Daily Fuel</div><div class="num">${fmt(m.cal)}<small> kcal</small></div><div class="delta">${m.protein}P · ${m.carbs}C · ${m.fat}F</div></div>
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card"><div class="ch"><h3>Journey to ${p.goalWeight} lb</h3><span class="pill e">lean bulk</span></div>
+        <div class="barwrap"><div class="barrow"><span>${p.startWeight} lb start</span><b>${w} lb</b><span>${p.goalWeight} lb goal</span></div>
+        <div class="bar"><i style="width:${pct(w,p.startWeight,p.goalWeight)}%"></i></div>
+        <div class="barrow" style="color:var(--faint)"><span>${pct(w,p.startWeight,p.goalWeight).toFixed(0)}% there</span><span>aim +0.25–0.5% bodyweight / wk</span></div></div>
+        <div class="note">Faster than ~0.5 lb/wk mostly adds fat; slower than 0.25 leaves muscle behind. Log weight weekly in <b>Metrics</b> and steer by the trend, not one day.</div></div>
+      <div class="card"><div class="ch"><h3>This Week</h3><span class="pill">4 lifts · daily mobility</span></div><div id="weekmini"></div></div>
+    </div>
+    <div class="card" style="margin-top:16px"><div class="ch"><h3>The eight tabs</h3></div>
+      <div class="grid g4">
+        ${pillar('✦','Mobility & Back','Kill the pain, unlock the hips, reach the floor.','mobility')}
+        ${pillar('▤','Training','Gym + no-gym, width, grip, vert.','train')}
+        ${pillar('▦','Schedule','Exactly when to do what, all week.','schedule')}
+        ${pillar('☾','Recovery','Sleep, deloads, warning lights.','recovery')}
+        ${pillar('◍','Nutrition','Protein, creatine, what to fuel with.','nutrition')}
+        ${pillar('⟁','Timeline','3 phases, clear differences, dates.','timeline')}
+        ${pillar('📏','Metrics','Weight, tape, V-taper scoreboard.','metrics')}
+        ${pillar('🖨','Print Sheet','One page with everything, printable.','print')}
+      </div></div>
+    <div class="note warn" style="margin-top:16px">From the PT side of the desk: this plan treats your back pain as a mobility/stability issue, the most common cause of what you describe. But <b>sharp, shooting, or radiating pain down a leg, numbness, or tingling</b> needs an in-person assessment from a physician or physical therapist before you continue — that pattern is outside what an app should self-treat.</div>
+  </div>`;
+}
+function pillar(ic,t,d,go){return `<button class="stat" style="text-align:left;cursor:pointer" onclick="goto('${go}')"><div style="font-size:18px;color:var(--ember)">${ic}</div><div style="font-family:'Oswald';font-size:16px;margin-top:8px">${t}</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">${d}</div></button>`;}
+function renderWeekMini(){const box=$('#weekmini');if(!box)return;box.innerHTML=WEEK.map(d=>{const c=d.type==='lift'?'var(--ember)':d.type==='opt'?'var(--steel)':'var(--faint)';return `<div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)"><div class="mono" style="width:34px;color:${c};font-weight:700">${d.d}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${d.main}</div><div style="font-size:11px;color:var(--faint)">${d.sub}</div></div></div>`;}).join('');}
+
+/* ---------------- MOBILITY ---------------- */
+function pgMobility(){return `<div class="page on" id="p-mobility">
+  <div class="ttl">Pillar A — Mobility & Pain Relief</div>
+  <h1 class="h-big">Unlock first. Build second.</h1>
+  <p class="lead">Your back pain is the <b>downstream bill</b> for tight hips and hamstrings — when the hips won't hinge, the lumbar spine pays. Passive stretching hurts because the tightness is protective <b>neural guarding</b>, not short tissue, so we don't yank on cold muscle. The routine below is ~12 minutes, needs no equipment, and works anywhere. Do it daily.</p>
+  <div class="grid g2" style="margin-top:22px">
+    <div class="card"><div class="ch"><h3>Daily Protocol · ~12 min</h3><span class="pill" id="mobcount"></span></div>
+      <p style="font-size:12.5px;color:var(--muted);margin:0 0 14px">Tap to check off. Tap the name to read the <i>why</i>. Order matters — breathing first to switch off the guarding.</p>
+      <div id="moblist"></div>
+      <button class="btn ghost sm" id="mobreset" style="margin-top:6px">Reset today</button></div>
+    <div><div class="card"><div class="ch"><h3>Toe-Touch Tracker</h3><span class="pill s">north star</span></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px">Stand, hinge, reach down with near-straight legs. Measure the gap from fingertips to floor in cm — <b>negative</b> = past your toes. Log weekly.</p>
+        <div style="display:flex;gap:10px;align-items:flex-end"><div style="flex:1"><label class="fld">Gap to floor (cm)</label><input type="number" id="ttinput" placeholder="e.g. 18 or -3" step="0.5"></div><button class="btn" id="ttlog">Log</button></div>
+        <div id="ttmiles" style="margin-top:16px"></div></div>
+      <div class="card" style="margin-top:16px"><div class="ch"><h3>Toe-touch progress</h3></div><div id="ttchart"></div></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="ch"><h3>The regression ladder to a toe-touch</h3></div>
+    <p class="sec-intro">Don't chase the floor — chase the <b>pattern</b>. Progress a rung only when the current one is pain-free and smooth.</p>
+    <table><tbody>
+      <tr><td class="mono">1</td><td><b>Supine band hamstring raise</b> — gain length lying down, back fully supported & safe.</td></tr>
+      <tr><td class="mono">2</td><td><b>Elevated-heel reach</b> — stand on a small plate/book, hinge & reach; the lift shortens the distance so you win reps.</td></tr>
+      <tr><td class="mono">3</td><td><b>Hip-hinge to a box</b> — touch a knee-height box, then lower it over weeks as range opens.</td></tr>
+      <tr><td class="mono">4</td><td><b>Jefferson curl (light)</b> — controlled loaded segmental flexion; the actual toe-touch skill, desensitised.</td></tr>
+      <tr><td class="mono">5</td><td><b>Flat-foot standing toe-touch</b> — the goal. Then keep the Jefferson curl forever as maintenance.</td></tr>
+    </tbody></table></div>
+</div>`;}
+function renderMobList(){const box=$('#moblist');if(!box)return;const today=todayStr();const done=S.mobilityDone[today]||[];box.innerHTML='';
+  MOBILITY.forEach((m,i)=>{const isDone=!!done[i];
+    const node=el(`<div class="chk ${isDone?'done':''}"><div class="box">✓</div><div class="ct"><div class="t">${m.t}</div><div class="d">${m.d}</div><div class="why-collapse" style="display:none;font-size:12px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)">${m.why}</div></div><div class="tag">${m.tag}</div></div>`);
+    node.querySelector('.box').addEventListener('click',e=>{e.stopPropagation();toggleMob(i);});
+    node.addEventListener('click',e=>{if(e.target.closest('.box'))return;const w=node.querySelector('.why-collapse');w.style.display=w.style.display==='none'?'block':'none';});
+    box.appendChild(node);});
+  const n=done.filter(Boolean).length;$('#mobcount').textContent=`${n}/${MOBILITY.length} today`;}
+function toggleMob(i){const t=todayStr();if(!S.mobilityDone[t])S.mobilityDone[t]=[];S.mobilityDone[t][i]=!S.mobilityDone[t][i];renderMobList();persist();}
+function renderToe(){const box=$('#ttmiles');if(!box)return;const last=S.toeTouch.length?S.toeTouch[S.toeTouch.length-1].gap:null;
+  box.innerHTML=TOE_MILES.map(ml=>{const hit=last!==null&&last<=ml.gap;return `<div class="chk ${hit?'done':''}" style="cursor:default"><div class="box">✓</div><div class="ct"><div class="t">${ml.label}</div>${ml.sub?`<div class="d">${ml.sub}</div>`:''}</div><div class="tag">${ml.gap>0?ml.gap+' cm':(ml.gap===0?'floor':Math.abs(ml.gap)+' past')}</div></div>`;}).join('');
+  drawLine('#ttchart',S.toeTouch.map(x=>x.gap),{invert:true,unit:'cm',goal:0});}
+
+/* ---------------- TRAINING ---------------- */
+let trainMode='gym',trainDay=null;
+function pgTrain(){return `<div class="page on" id="p-train">
+  <div class="ttl">Pillar B — Training</div>
+  <h1 class="h-big">Engineer the frame.</h1>
+  <p class="lead">Every session is biased toward your targets: <b>shoulder width</b> (high-volume lateral & rear delts), <b>back thickness</b> (chest-supported rows that spare your spine), plus dedicated <b>grip, traps, core and explosive jump work</b>. Toggle <b>Gym</b> or <b>No-Gym</b> — both are complete standalone programs, and every gym move lists its bodyweight swap. Log every set; progressive overload on these numbers is what grows you.</p>
+  <div style="display:flex;gap:12px;align-items:center;margin:22px 0 16px;flex-wrap:wrap">
+    <div class="seg" id="modeseg"><button data-mode="gym" class="on">🏋 Gym</button><button data-mode="travel">🎒 No-Gym / Travel</button></div>
+    <span class="pill" id="trainnote"></span></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px" id="dayseg"></div>
+  <div id="exolist"></div>
+  <div class="note" style="margin-top:8px"><b>How to progress:</b> hit the top of the rep range on all sets, then add load (or a harder variation) next time. Isolations → 1–2 reps short of failure; compounds → leave 2–3 in reserve to protect the back. Rest ~2 min on compounds, 60–90 s on isolation. Plyos always FRESH, full rest, low reps.</div>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="card"><div class="ch"><h3>⚡ Explosiveness & Vert</h3><span class="pill s">baseball · hoops · volleyball</span></div>
+      <p class="sec-intro">Your sports reward spring. Strength builds the force; plyos teach you to fire it fast.</p>
+      <ul class="tip-list">${ATHLETIC.plyo.map(x=>`<li><b>${x.t}.</b> ${x.d}</li>`).join('')}</ul></div>
+    <div class="card"><div class="ch"><h3>✊ Grip & Forearms</h3><span class="pill s">functional carryover</span></div>
+      <p class="sec-intro">Grip is the bottleneck for everything you carry, haul or hold — and it raises force in every big lift.</p>
+      <ul class="tip-list">${ATHLETIC.grip.map(x=>`<li><b>${x.t}.</b> ${x.d}</li>`).join('')}</ul></div>
+  </div>
+  <div class="note warn" style="margin-top:16px"><b>Half-marathon, eventually?</b> Heavy running during a bulk blunts mass gains (the interference effect). Keep running to easy zone-2, 1–2×/wk, until you hit your size goals. Then run a dedicated 10–12 week half-marathon block in late Phase 3 / after — that's the time to ramp mileage.</div>
+</div>`;}
+function renderDaySeg(){const seg=$('#dayseg');if(!seg)return;const prog=trainMode==='gym'?GYM:TRAVEL;const days=Object.keys(prog);if(!trainDay||!days.includes(trainDay))trainDay=days[0];seg.innerHTML='';
+  days.forEach(d=>{const b=el(`<button class="btn ${d===trainDay?'':'ghost'} sm">${d}</button>`);b.onclick=()=>{trainDay=d;renderDaySeg();renderExos();};seg.appendChild(b);});
+  $('#trainnote').textContent=trainMode==='gym'?'Dumbbells · cables · machines — no barbell bench':'Bodyweight + a backpack — anywhere';}
+function renderExos(){const box=$('#exolist');if(!box)return;const prog=trainMode==='gym'?GYM:TRAVEL;const list=prog[trainDay]||[];box.innerHTML='';
+  list.forEach((ex,i)=>{const log=S.trainLog[ex.id]||[];const last=log.length?log[log.length-1]:null;
+    const lastTxt=last?`Last (${last.date}): ${last.sets.map(s=>`${s.w||'BW'}×${s.r}`).join('  ')}`:'No log yet — set your baseline today.';
+    const node=el(`<div class="exo"><div class="top"><div class="idx">${i+1}</div><div class="nm">${ex.nm}</div><div class="scheme">${ex.s}</div><div class="chev">▶</div></div>
+      <div class="body"><div class="why"><b>Why:</b> ${ex.why}</div><div>${ex.cues.map(c=>`<span class="cue">${c}</span>`).join('')}</div>
+      ${ex.alt?`<div class="alt"><b>No-gym swap:</b> ${ex.alt}</div>`:''}
+      <div class="setlog"><div class="sf"><label class="fld">Weight</label><input type="number" class="w" placeholder="lb"></div><div class="sf"><label class="fld">Reps</label><input type="number" class="r" placeholder="reps"></div><button class="btn steel sm addset">+ Log set</button></div>
+      <div class="logline">${lastTxt}</div></div></div>`);
+    node.querySelector('.top').onclick=()=>node.classList.toggle('open');
+    node.querySelector('.addset').onclick=()=>{const wv=node.querySelector('.w').value,rv=node.querySelector('.r').value;if(!rv){node.querySelector('.r').focus();return;}logSet(ex.id,wv,rv,node);};
+    box.appendChild(node);});}
+function logSet(id,w,r,node){const t=todayStr();if(!S.trainLog[id])S.trainLog[id]=[];let e=S.trainLog[id].find(x=>x.date===t);if(!e){e={date:t,sets:[]};S.trainLog[id].push(e);}e.sets.push({w:w?Number(w):null,r:Number(r)});node.querySelector('.r').value='';node.querySelector('.logline').innerHTML=`Today: <b>${e.sets.map(s=>`${s.w||'BW'}×${s.r}`).join('  ')}</b>`;persist();}
+
+/* ---------------- SCHEDULE ---------------- */
+function pgSchedule(){return `<div class="page on" id="p-schedule">
+  <div class="ttl">The Week</div>
+  <h1 class="h-big">When to do what.</h1>
+  <p class="lead">A 4-day lifting split with daily mobility and built-in recovery — the sweet spot for a hard-gainer: enough stimulus to grow, enough rest to recover and actually show up hard each session. Jumps and grip are slotted where you're freshest. Tap a day for the play-by-play.</p>
+  <div class="card" style="margin-top:22px"><div class="ch"><h3>Optimal week</h3><span class="pill e">4 lift · 2 recover · 1 flex</span></div><div id="weekfull"></div></div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="stat"><div class="lab">Lift days</div><div class="num">4<small>/wk</small></div><div class="delta">Upper×2 · Lower×2</div></div>
+    <div class="stat"><div class="lab">Mobility</div><div class="num">7<small>/wk</small></div><div class="delta">~12 min daily</div></div>
+    <div class="stat"><div class="lab">Sleep target</div><div class="num">${SLEEP.needHrs}<small> hrs</small></div><div class="delta">non-negotiable</div></div>
+  </div>
+  <div class="note" style="margin-top:16px"><b>Why this layout:</b> upper/lower alternation gives each muscle ~72 h to recover while you still train 4×/wk. Plyos land on Tue/Fri before fatigue. Wednesday's mid-week recovery day stops fatigue snowballing. Saturday flexes to a pump session or actual sport — playing ball <i>is</i> great conditioning and keeps this fun.</div>
+</div>`;}
+function renderWeekFull(){const box=$('#weekfull');if(!box)return;box.innerHTML='';WEEK.forEach(d=>{const c=d.type==='lift'?'var(--ember)':d.type==='opt'?'var(--steel)':'var(--faint)';
+  const node=el(`<div class="exo"><div class="top"><div class="idx" style="color:${c};width:46px;font-size:15px">${d.d}</div><div class="nm">${d.main}</div><div class="scheme">${d.tag}</div><div class="chev">▶</div></div>
+    <div class="body"><div class="why" style="border:none;margin:0;padding-top:12px">${d.sub}</div><ul class="tip-list">${(DAY_DETAIL[d.d]||[]).map(x=>`<li>${x}</li>`).join('')}</ul></div></div>`);
+  node.querySelector('.top').onclick=()=>node.classList.toggle('open');box.appendChild(node);});}
+
+/* ---------------- RECOVERY ---------------- */
+function pgRecovery(){const last=S.sleepLog.length?S.sleepLog[S.sleepLog.length-1].h:null;return `<div class="page on" id="p-recovery">
+  <div class="ttl">Recovery & Sleep</div>
+  <h1 class="h-big">You grow in the dark.</h1>
+  <p class="lead">Training is only the signal — <b>sleep and recovery are where the muscle is actually built</b>. Skimp here and the best program on earth stalls. For a 22-year-old training this hard, the target is <b>${SLEEP.needHrs} hours a night</b>, consistently.</p>
+  <div class="grid g2" style="margin-top:22px">
+    <div class="card"><div class="ch"><h3>Sleep — the #1 supplement</h3><span class="pill e">${SLEEP.needHrs} hrs</span></div><ul class="tip-list">${SLEEP.points.map(p=>`<li><b>${p.t}.</b> ${p.d}</li>`).join('')}</ul></div>
+    <div><div class="card"><div class="ch"><h3>Log last night</h3></div>
+        <div style="display:flex;gap:10px;align-items:flex-end"><div style="flex:1"><label class="fld">Hours slept</label><input type="number" id="sleepin" step="0.25" placeholder="${last||'8.5'}"></div><button class="btn" id="sleeplog">Log</button></div>
+        <div id="sleepstat" style="margin-top:14px"></div><div id="sleepchart" style="margin-top:8px"></div></div>
+      <div class="card" style="margin-top:16px"><div class="ch"><h3>Recovery rules</h3></div><ul class="tip-list">${SLEEP.recovery.map(p=>`<li><b>${p.t}.</b> ${p.d}</li>`).join('')}</ul></div></div>
+  </div>
+  <div class="note warn" style="margin-top:16px"><b>The deload is not optional.</b> Every 6–8 weeks, take one week at ~60% sets and ~80% load. It feels like going backward; it's actually how you take three steps forward. Your joints and nervous system bank the recovery, and you come back stronger — this is also prime injury prevention.</div>
+</div>`;}
+function renderSleep(){const last=S.sleepLog.slice(-7);const avg=last.length?(last.reduce((a,x)=>a+x.h,0)/last.length):0;const st=$('#sleepstat');
+  if(st)st.innerHTML=`<div class="stat"><div class="lab">7-day average</div><div class="num">${avg?avg.toFixed(1):'—'}<small> hrs</small></div><div class="delta ${avg>=8.5?'up':'dn'}">${avg?(avg>=8.5?'on target ✓':'below target — bank more'):'log a few nights'}</div></div>`;
+  drawLine('#sleepchart',S.sleepLog.map(x=>x.h),{unit:'h',goal:9});}
+
+/* ---------------- NUTRITION ---------------- */
+function pgNutrition(){const m=macros(),w=curWeight();return `<div class="page on" id="p-nutrition">
+  <div class="ttl">Pillar D — Nutrition & Fuel</div>
+  <h1 class="h-big">Fuel the frame.</h1>
+  <p class="lead">A 6'2"+ hard-gainer's #1 failure point is <b>under-eating without realising it</b> — big frame, fast metabolism, easily full. The fix is calorie <i>density</i> and consistency. Targets recalculate from your logged bodyweight automatically.</p>
+  <div class="grid g4" style="margin:22px 0 16px">
+    <div class="stat"><div class="lab">Maintenance (TDEE)</div><div class="num">${fmt(m.tdee)}<small> kcal</small></div><div class="delta">est. from ${w} lb</div></div>
+    <div class="stat" style="border-color:var(--ember)"><div class="lab" style="color:var(--ember)">Eat / day</div><div class="num">${fmt(m.cal)}<small> kcal</small></div><div class="delta up">▲ lean-bulk surplus</div></div>
+    <div class="stat"><div class="lab">Protein</div><div class="num">${m.protein}<small> g</small></div><div class="delta">≈ 1 g/lb · ${fmt(m.protein*4)} kcal</div></div>
+    <div class="stat"><div class="lab">Carbs / Fat</div><div class="num">${m.carbs}<small>/${m.fat}g</small></div><div class="delta">fuel + hormones</div></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><div class="ch"><h3>The protein game</h3><span class="pill s">${m.protein} g/day</span></div>
+      <p class="sec-intro">Hit <b>~1 g per lb of bodyweight</b>, spread over 4–5 feeds of 30–50 g (each crossing the ~3 g leucine 'switch' that triggers muscle building). <b>Whole food first</b> — powder is just convenience to top up.</p>
+      <table><thead><tr><th>Source</th><th>Protein</th><th>Note</th></tr></thead><tbody>${PROTEIN_SOURCES.map(s=>`<tr><td><b>${s.f}</b></td><td class="mono">${s.p}</td><td style="color:var(--muted)">${s.note}</td></tr>`).join('')}</tbody></table>
+      <div class="note"><b>Best shake (hard-gainer ~800 kcal):</b> 2 cups whole milk + 1 scoop whey + 1 cup oats + 1 banana + 2 tbsp peanut butter. Blend. Drink between meals on days you can't eat enough — liquid calories are the cheat code.</div></div>
+    <div class="card"><div class="ch"><h3>Supplements that earn a place</h3><span class="pill e">food-first</span></div>
+      <p class="sec-intro">Most supplements are noise. These few are backed by real evidence. Tiers: <b style="color:var(--ember)">core</b> · <b style="color:var(--steel)">useful</b> · optional.</p>
+      <div id="supplist"></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="ch"><h3>Why these numbers</h3></div>
+    <table><tbody>
+      <tr><td><b>Calories = TDEE + ~420</b></td><td>A modest surplus keeps gains lean. You can't force muscle faster by eating more — you just add fat. Steer by the scale, not the math.</td></tr>
+      <tr><td><b>Protein 1 g/lb</b></td><td>Maximises muscle protein synthesis with margin for a hard-gainer. The single most important macro for building.</td></tr>
+      <tr><td><b>Fat 0.45 g/lb</b></td><td>Protects testosterone, hormones and joints. Don't drop lower chasing carbs.</td></tr>
+      <tr><td><b>Carbs (the rest)</b></td><td>Your training fuel and easiest calorie lever. Hard-gainers thrive on high carbs — rice, oats, potatoes, fruit, bread.</td></tr>
+      <tr><td><b>Hydration</b></td><td>~3–4 L water/day. Muscle is ~75% water; even mild dehydration drops strength and pumps. More on training and hot days.</td></tr>
+    </tbody></table>
+    <div class="note"><b>Tune by the scale, not the spreadsheet.</b> If your 7-day average weight isn't climbing ~0.25–0.5% (≈0.5 lb/wk), add 200 kcal of carbs/fat. Climbing too fast? Drop 200. Re-log weight in Metrics and every number here follows you.</div></div>
+  <div class="card" style="margin-top:16px"><div class="ch"><h3>Today's intake</h3><span class="pill" id="kcaltag"></span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+      <div style="flex:2;min-width:140px"><label class="fld">Food / meal</label><input type="text" id="fname" placeholder="e.g. Mass shake"></div>
+      <div style="width:80px"><label class="fld">Cal</label><input type="number" id="fcal" placeholder="kcal"></div>
+      <div style="width:60px"><label class="fld">P</label><input type="number" id="fp" placeholder="g"></div>
+      <div style="width:60px"><label class="fld">C</label><input type="number" id="fc" placeholder="g"></div>
+      <div style="width:60px"><label class="fld">F</label><input type="number" id="ff" placeholder="g"></div>
+      <button class="btn" id="addfood">Add</button></div>
+    <div id="dayrings" class="grid g4" style="margin-bottom:14px"></div><div id="foodlog"></div></div>
+</div>`;}
+function renderSupps(){const box=$('#supplist');if(!box)return;box.innerHTML=SUPPS.map(s=>{const c=s.tier==='core'?'var(--ember)':s.tier==='useful'?'var(--steel)':'var(--faint)';
+  return `<div class="exo"><div class="top"><div class="idx" style="color:${c};width:auto;font-size:11px;font-family:'JetBrains Mono';text-transform:uppercase">${s.tier}</div><div class="nm">${s.n}</div><div class="scheme">${s.dose}</div><div class="chev">▶</div></div><div class="body"><div class="why" style="border:none;margin:0;padding-top:12px">${s.why}${s.who&&s.who!=='Context'?` <span style="color:var(--faint)">· ${s.who}</span>`:''}</div></div></div>`;}).join('');
+  box.querySelectorAll('.exo .top').forEach(t=>t.onclick=()=>t.parentElement.classList.toggle('open'));
+  const n=el(`<div class="note">Supplements are <b>unregulated</b> — buy third-party tested brands (look for NSF or Informed Sport), and check with a doctor before starting anything if you take medication or have a health condition. None of this is medical advice.</div>`);box.appendChild(n);}
+function renderNutritionDay(){const t=todayStr();const log=S.nutritionLog[t]||[];const sum=log.reduce((a,x)=>({cal:a.cal+(x.cal||0),p:a.p+(x.p||0),c:a.c+(x.c||0),f:a.f+(x.f||0)}),{cal:0,p:0,c:0,f:0});const m=macros();
+  const rings=$('#dayrings');if(rings)rings.innerHTML=[['Calories',sum.cal,m.cal,'kcal'],['Protein',sum.p,m.protein,'g'],['Carbs',sum.c,m.carbs,'g'],['Fat',sum.f,m.fat,'g']].map(([l,v,g,u])=>{const p=Math.min(100,v/g*100||0);return `<div class="stat"><div class="lab">${l}</div><div class="num" style="font-size:24px">${fmt(v)}<small>/${fmt(g)}${u}</small></div><div class="bar" style="margin-top:8px"><i style="width:${p}%"></i></div></div>`;}).join('');
+  const tag=$('#kcaltag');if(tag)tag.textContent=`${fmt(sum.cal)} / ${fmt(m.cal)} kcal · ${fmt(Math.max(0,m.cal-sum.cal))} to go`;
+  const fl=$('#foodlog');if(fl)fl.innerHTML=log.length?log.map((x,i)=>`<div class="chk" style="cursor:default"><div class="ct"><div class="t">${x.name}</div><div class="d mono">${x.cal||0} kcal · ${x.p||0}P ${x.c||0}C ${x.f||0}F</div></div><button class="btn ghost sm" onclick="delFood(${i})">✕</button></div>`).join(''):`<div class="note">Nothing logged yet today. Add your first meal above — rough numbers beat guessing.</div>`;}
+function delFood(i){const t=todayStr();(S.nutritionLog[t]||[]).splice(i,1);renderNutritionDay();persist();}
+
+/* ---------------- TIMELINE ---------------- */
+function pgTimeline(){return `<div class="page on" id="p-timeline">
+  <div class="ttl">Pillar C — Timeline & Phases</div>
+  <h1 class="h-big">25–30 lb, the honest way.</h1>
+  <p class="lead">As a former athlete regaining muscle, early progress is fast — muscle memory is real. But clean mass caps around <b>0.5–1 lb/month of true muscle</b> after the initial whoosh, so the full lean transformation is a <b>~18–24 month</b> project. Anyone promising it in 6 is selling fat or false hope. Each phase below changes the reps, effort, volume, power work and calories — tap to expand and check off benchmarks.</p>
+  <div class="card" style="margin:22px 0 18px"><div class="ch"><h3>The arc at a glance</h3></div>
+    <div class="barwrap">${PHASES.map(p=>{const done=(S.benchmarks[p.n]||[]).filter(Boolean).length;return `<div style="margin-bottom:6px"><div class="barrow"><span><b style="color:var(--ember)">Phase ${p.n}</b> · ${p.when}</span><span>${done}/${p.bench.length} benchmarks</span></div><div class="bar"><i style="width:${done/p.bench.length*100}%"></i></div></div>`;}).join('')}</div></div>
+  <div id="phases"></div>
+</div>`;}
+function renderPhases(){const box=$('#phases');if(!box)return;const cur=currentPhase();box.innerHTML='';
+  PHASES.forEach(p=>{const locked=p.n>cur;
+    const diffRows=Object.entries(p.diff).map(([k,v])=>`<tr><td style="color:var(--faint);width:120px">${k}</td><td><b>${v}</b></td></tr>`).join('');
+    const node=el(`<div class="phase ${locked?'locked':''}"><div class="ph-head"><div class="ph-num">${p.n}</div><div class="ph-t"><h3>${p.t}</h3><div class="when">${p.when}${p.n===cur?' · YOU ARE HERE':''}</div></div><div class="chev" style="color:var(--faint);font-size:14px">▶</div></div>
+      <div class="ph-body" style="display:none"><p class="aim">${p.aim}</p>
+        <div class="grid g2"><div><div class="eyebrow" style="margin-bottom:8px">How this phase differs</div><table><tbody>${diffRows}</tbody></table></div>
+        <div><div class="eyebrow" style="margin-bottom:8px">Benchmarks — tap to mark done</div><div class="bm"></div></div></div></div></div>`);
+    node.querySelector('.ph-head').onclick=()=>{const b=node.querySelector('.ph-body');const open=b.style.display==='none';b.style.display=open?'block':'none';node.querySelector('.ph-head .chev').style.transform=open?'rotate(90deg)':'';};
+    if(p.n===cur)node.querySelector('.ph-body').style.display='block';
+    const bm=node.querySelector('.bm');if(!S.benchmarks[p.n])S.benchmarks[p.n]=[];
+    p.bench.forEach((b,i)=>{const dn=!!S.benchmarks[p.n][i];const c=el(`<div class="chk ${dn?'done':''}"><div class="box">✓</div><div class="ct"><div class="t" style="font-size:13px">${b}</div></div></div>`);c.onclick=()=>{S.benchmarks[p.n][i]=!S.benchmarks[p.n][i];renderPhases();persist();};bm.appendChild(c);});
+    box.appendChild(node);});}
+
+/* ---------------- METRICS ---------------- */
+function pgMetrics(){const p=S.profile;return `<div class="page on" id="p-metrics">
+  <div class="ttl">Tracking</div>
+  <h1 class="h-big">Measure what matters.</h1>
+  <p class="lead">The scale and the tape don't lie, and they keep every other number in this app calibrated. Log bodyweight weekly (same time, same conditions — fasted morning is best) and measurements every 4 weeks.</p>
+  <div class="grid g2" style="margin:22px 0 16px">
+    <div class="card"><div class="ch"><h3>Bodyweight</h3><span class="pill">weekly</span></div>
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px"><div style="flex:1"><label class="fld">Weight (lb)</label><input type="number" id="wlog" step="0.1" placeholder="${curWeight()}"></div><button class="btn" id="wlogbtn">Log</button></div>
+      <div id="wchart"></div></div>
+    <div class="card"><div class="ch"><h3>Plan settings</h3></div>
+      <div class="grid g2"><div><label class="fld">Start weight (lb)</label><input type="number" id="setStart" value="${p.startWeight}"></div><div><label class="fld">Goal weight (lb)</label><input type="number" id="setGoal" value="${p.goalWeight}"></div><div><label class="fld">Height (inches)</label><input type="number" id="setH" value="${p.heightIn}"></div><div><label class="fld">Age</label><input type="number" id="setAge" value="${p.age}"></div><div style="grid-column:1/-1"><label class="fld">Activity (1.4 sedentary → 1.8 very active)</label><input type="number" id="setAct" step="0.05" value="${p.activity}"></div></div>
+      <button class="btn steel" id="savesettings" style="margin-top:14px">Save settings</button></div>
+  </div>
+  <div class="card"><div class="ch"><h3>Body measurements</h3><span class="pill e">every 4 weeks · V-taper scoreboard</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+      <div style="flex:1;min-width:84px"><label class="fld">Shoulders</label><input type="number" id="mS" step="0.1"></div>
+      <div style="flex:1;min-width:84px"><label class="fld">Chest</label><input type="number" id="mC" step="0.1"></div>
+      <div style="flex:1;min-width:84px"><label class="fld">Waist</label><input type="number" id="mW" step="0.1"></div>
+      <div style="flex:1;min-width:84px"><label class="fld">Arm</label><input type="number" id="mA" step="0.1"></div>
+      <div style="flex:1;min-width:84px"><label class="fld">Forearm</label><input type="number" id="mF" step="0.1"></div>
+      <div style="flex:1;min-width:84px"><label class="fld">Thigh</label><input type="number" id="mT" step="0.1"></div>
+      <button class="btn" id="mlogbtn">Log</button></div>
+    <div id="mtable"></div></div>
+  <div class="card" style="margin-top:16px"><div class="ch"><h3>Backup &amp; Restore</h3><span class="pill s">your data, your file</span></div>
+    <p class="sec-intro">Everything here lives in this browser only (see README). Export a backup regularly — especially before clearing browser data, switching computers, or if you ever ask for the app to be changed — and you can restore it any time.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" id="exportbtn">⬇ Export backup (.json)</button>
+      <button class="btn ghost" id="importbtn">⬆ Import backup</button>
+      <input type="file" id="importfile" accept="application/json" style="display:none">
+    </div>
+    <div class="note" id="backupnote">No backup taken this session yet.</div></div>
+</div>`;}
+function renderMetrics(){drawLine('#wchart',S.weightLog.map(x=>x.w),{unit:'lb',goal:S.profile.goalWeight,start:S.profile.startWeight});const mt=$('#mtable');if(!mt)return;
+  if(!S.measure.length){mt.innerHTML=`<div class="note">No measurements yet (inches). The key ratio to watch is <b>shoulders ÷ waist</b> — as that climbs, your V-taper is winning even if the scale crawls. Also track <b>forearm</b>: it's your grip-size proxy.</div>`;return;}
+  const rows=S.measure.slice().reverse().map(m=>{const ratio=m.waist?(m.shoulders/m.waist).toFixed(2):'—';return `<tr><td class="mono">${m.date}</td><td class="mono">${m.shoulders||'—'}</td><td class="mono">${m.chest||'—'}</td><td class="mono">${m.waist||'—'}</td><td class="mono">${m.arm||'—'}</td><td class="mono">${m.forearm||'—'}</td><td class="mono">${m.thigh||'—'}</td><td class="mono" style="color:var(--ember)">${ratio}</td></tr>`;}).join('');
+  mt.innerHTML=`<table><thead><tr><th>Date</th><th>Shldr</th><th>Chest</th><th>Waist</th><th>Arm</th><th>F.arm</th><th>Thigh</th><th>S÷W</th></tr></thead><tbody>${rows}</tbody></table>`;}
+
+/* ---------------- PRINT MASTER SHEET ---------------- */
+function pgPrint(){const m=macros();
+  const gymList=Object.entries(GYM).map(([day,ex])=>`<tr><td><b>${day}</b></td><td>${ex.map(e=>`${e.nm} <span class="tm">${e.s}</span>`).join(' · ')}</td></tr>`).join('');
+  const travelList=Object.entries(TRAVEL).map(([day,ex])=>`<tr><td><b>${day}</b></td><td>${ex.map(e=>`${e.nm} <span class="tm">${e.s}</span>`).join(' · ')}</td></tr>`).join('');
+  return `<div class="page on" id="p-print">
+  <div class="printhide" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    <div><div class="ttl">Master Sheet</div><h1 class="h-big">Everything, one page.</h1>
+    <p class="lead">The whole plan condensed for a printout or screenshot — pin it to the gym wall or your fridge. Hit print to save as PDF (it strips the dark theme for clean paper).</p></div>
+    <button class="btn" onclick="window.print()" style="font-size:15px;padding:12px 22px">🖨 Print / Save PDF</button>
+  </div>
+
+  <div class="card" style="margin-top:20px"><h2 style="font-size:24px;color:var(--ember)">THE BLUEPRINT — Master Sheet</h2>
+    <p style="font-size:12.5px;color:var(--muted);margin:6px 0 0">Goal: ${S.profile.startWeight} → ${S.profile.goalWeight} lb lean · Wide shoulders, big back, strong grip, explosive · 6'2"+ hard-gainer</p></div>
+
+  <div class="card" style="margin-top:16px"><h3>① Daily Mobility (~12 min, anywhere)</h3>
+    <table><tbody>${MOBILITY.map((x,i)=>`<tr><td class="mono" style="width:24px">${i+1}</td><td><b>${x.t}</b> — ${x.d}</td><td class="tm">${x.tag}</td></tr>`).join('')}</tbody></table></div>
+
+  <div class="card" style="margin-top:16px"><h3>② Weekly Schedule</h3>
+    <table><tbody>${WEEK.map(d=>`<tr><td style="width:48px"><b>${d.d}</b></td><td>${d.main}<br><span style="color:var(--muted);font-size:12px">${d.sub}</span></td></tr>`).join('')}</tbody></table></div>
+
+  <div class="card print-break" style="margin-top:16px"><h3>③ Gym Program (Dumbbell · Cable · Machine)</h3>
+    <table><tbody>${gymList}</tbody></table>
+    <p style="font-size:12px;color:var(--muted);margin-top:10px">Compounds: leave 2–3 reps in reserve · Isolations: 1–2 from failure · Plyos fresh & low-rep · Rest 60–120 s.</p></div>
+
+  <div class="card" style="margin-top:16px"><h3>④ No-Gym / Travel Program (bodyweight + backpack)</h3>
+    <table><tbody>${travelList}</tbody></table></div>
+
+  <div class="card" style="margin-top:16px"><h3>⑤ Nutrition (auto from ${curWeight()} lb)</h3>
+    <table><tbody>
+      <tr><td><b>Calories</b></td><td class="tm">${fmt(m.cal)} kcal/day</td><td>lean-bulk surplus over ~${fmt(m.tdee)} maintenance</td></tr>
+      <tr><td><b>Protein</b></td><td class="tm">${m.protein} g</td><td>~1 g/lb · 4–5 feeds of 30–50 g · whole food first</td></tr>
+      <tr><td><b>Carbs</b></td><td class="tm">${m.carbs} g</td><td>training fuel · rice, oats, potato, fruit, bread</td></tr>
+      <tr><td><b>Fat</b></td><td class="tm">${m.fat} g</td><td>hormones & joints · don't go lower</td></tr>
+      <tr><td><b>Water</b></td><td class="tm">3–4 L</td><td>more on training/hot days</td></tr>
+    </tbody></table>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px"><b>Core supps:</b> creatine monohydrate 5 g daily · whey to fill protein gaps · vitamin D3 1–2k IU. Steer calories by your weekly weight trend.</p></div>
+
+  <div class="card" style="margin-top:16px"><h3>⑥ Sleep & Recovery</h3>
+    <table><tbody>
+      <tr><td><b>Sleep</b></td><td>${SLEEP.needHrs} hrs nightly, consistent times · slow protein before bed</td></tr>
+      <tr><td><b>Deload</b></td><td>every 6–8 wks: ~60% sets, ~80% load, keep moving</td></tr>
+      <tr><td><b>Active recovery</b></td><td>Wed + Sun: mobility + 20–40 min zone-2 walk/bike</td></tr>
+    </tbody></table></div>
+
+  <div class="card" style="margin-top:16px"><h3>⑦ Phases</h3>
+    <table><tbody>${PHASES.map(p=>`<tr><td style="width:40px"><b>P${p.n}</b></td><td><b>${p.t}</b> <span class="tm">${p.when}</span><br><span style="font-size:12px;color:var(--muted)">${Object.entries(p.diff).map(([k,v])=>`${k}: ${v}`).join(' · ')}</span></td></tr>`).join('')}</tbody></table></div>
+
+  <div class="note warn" style="margin-top:16px">Stop and see a clinician for sharp/radiating/shooting back or leg pain, numbness, or tingling. Supplements are unregulated — buy third-party tested; not medical advice.</div>
+</div>`;}
+
+/* ---------------- DAILY / UNIVERSAL ---------------- */
+let dailyDay=null, dailyMode='bw';
+function pgDaily(){
+  if(!dailyDay) dailyDay=JS_DAY[new Date().getDay()];
+  const m=macros();
+  return `<div class="page on" id="p-daily">
+  <div class="screenonly">
+    <div class="ttl">The Simple Version</div>
+    <h1 class="h-big">Just do today.</h1>
+    <p class="lead">The whole plan boiled down to <b>one thing to remember per day</b>. Same workout every Monday, every Tuesday, and so on — so it becomes a habit you don't have to think about. <b>The only rule:</b> when a session starts feeling easy, add a rep or a little weight next time. That's how you keep getting bigger and stronger without overthinking it. Defaults to bodyweight (works anywhere); flip to gym if you've got one.</p>
+    <div style="display:flex;gap:6px;margin:22px 0 14px" id="daychips"></div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap">
+      <div class="seg" id="dmodeseg"><button data-m="bw" class="${dailyMode==='bw'?'on':''}">🎒 No Gym</button><button data-m="gym" class="${dailyMode==='gym'?'on':''}">🏋 Gym</button></div>
+      <button class="btn ghost sm" onclick="window.print()">🖨 Print the whole week</button>
+    </div>
+    <div id="dailybody"></div>
+  </div>
+  <div class="printonly"><div style="margin-bottom:10px"><h2 style="font-size:22px;color:var(--ember)">THE SIMPLE WEEK — do this every week</h2><p style="font-size:12px;color:#444">Add a rep or a little weight whenever it feels easy. Bodyweight shown — see the app for gym swaps.</p></div>
+    <div class="pweek">${ORDER.map(k=>{const d=SIMPLE[k];return `<div class="card"><h3 style="font-size:16px">${k} — ${d.title}</h3><div style="font-size:11.5px;color:#555;margin:2px 0 6px">${d.mission}</div>${d.bw.map(x=>`<div style="font-size:12.5px;padding:2px 0"><b>${x[0]}</b> — ${x[1]}</div>`).join('')}</div>`;}).join('')}
+    <div class="card"><h3 style="font-size:16px">EVERY DAY — Mobility (~8 min)</h3>${SIMPLE_MOBILITY.map(x=>`<div style="font-size:12.5px;padding:2px 0"><b>${x[0]}</b> — ${x[1]}</div>`).join('')}</div>
+    <div class="card"><h3 style="font-size:16px">EVERY DAY — Fuel & Sleep</h3><div style="font-size:12.5px;padding:2px 0">Eat <b>${fmt(m.cal)} kcal</b> · <b>${m.protein}g protein</b> · ${m.carbs}g carbs · ${m.fat}g fat</div><div style="font-size:12.5px;padding:2px 0">4 meals + 1 shake · protein every meal · 3–4 L water</div><div style="font-size:12.5px;padding:2px 0">Creatine 5g daily · Sleep ${SLEEP.needHrs} hrs</div><div style="font-size:12.5px;padding:2px 0">Weigh weekly (aim +0.5 lb/wk) · goal ${S.profile.goalWeight} lb · ~18–24 months</div></div>
+    </div></div>
+  </div>`;
+}
+function renderDaily(){
+  const chips=$('#daychips');
+  if(chips){ chips.innerHTML=''; const today=JS_DAY[new Date().getDay()];
+    ORDER.forEach(k=>{ const b=el(`<button class="daychip ${k===dailyDay?'on':''} ${k===today?'today':''}">${k}</button>`); b.onclick=()=>{dailyDay=k;renderDaily();}; chips.appendChild(b); }); }
+  const d=SIMPLE[dailyDay]; const moves=dailyMode==='gym'?d.gym:d.bw; const m=macros();
+  const accent=d.type==='rest'?'var(--steel)':d.type==='opt'?'var(--gold)':'var(--ember)';
+  const isRest=d.type!=='lift';
+  const body=$('#dailybody'); if(!body)return;
+  const np=nextPhaseInfo(), streak=mobilityStreak(), lifts=liftsThisWeek(), w=curWeight();
+  const goalPct=pct(w,S.profile.startWeight,S.profile.goalWeight);
+  const strip=`
+    <div class="motiv">"${motivationLine()}"</div>
+    <div class="grid g4" style="margin-bottom:18px">
+      <div class="ind"><div class="il">Progress to goal</div><div class="iv">${goalPct.toFixed(0)}<small>%</small></div><div class="bar" style="margin-top:7px"><i style="width:${goalPct}%"></i></div><div class="ix">${w} → ${S.profile.goalWeight} lb</div></div>
+      <div class="ind"><div class="il">${np.lb>0?'Next milestone':'Status'}</div><div class="iv">${np.lb>0?np.lb.toFixed(0):'★'}<small>${np.lb>0?' lb':''}</small></div><div class="ix">${np.label}</div></div>
+      <div class="ind"><div class="il">Mobility streak</div><div class="iv" style="color:${streak>0?'var(--ember)':'var(--faint)'}">${streak>0?'🔥 ':''}${streak}<small> ${streak===1?'day':'days'}</small></div><div class="ix">${streak>0?'keep it alive today':'check it off below to start'}</div></div>
+      <div class="ind"><div class="il">Lifts this week</div><div class="iv">${lifts}<small> / 4</small></div><div class="bar" style="margin-top:7px"><i style="width:${Math.min(100,lifts/4*100)}%"></i></div><div class="ix">${lifts>=4?'week complete ✓':'log sets in Training'}</div></div>
+    </div>`;
+  body.innerHTML=strip+`
+    <div class="day-hero"><div class="dnum" style="color:${accent}">${dailyDay}</div><div><h2 style="font-size:24px">${d.title}</h2><div class="dmiss">${d.mission}</div></div></div>
+    <div class="grid g2">
+      <div class="card"><div class="ch"><h3>${isRest?'Today':'Workout'}</h3><span class="pill ${dailyMode==='gym'?'e':'s'}">${dailyMode==='gym'?'gym':'no gym'}</span></div>
+        ${moves.map(x=>`<div class="simple-move"><div class="smn">${x[0]}</div><div class="smt">${x[1]}</div></div>`).join('')}
+        ${!isRest?`<div class="note"><b>The only rule:</b> hit the top number on every set → next time add 1 rep or a little weight. ${dailyMode==='bw'?'No gym? Load a backpack heavier, or pick the harder variation.':''} Rest ~90s between sets. Jumps always come first, fresh.</div>`:`<div class="note">Recovery is training too — it's when the muscle actually gets built. Keep it genuinely easy today.</div>`}
+      </div>
+      <div>
+        <div class="card"><div class="ch"><h3>Mobility — every day</h3><span class="pill">~8 min</span></div>
+          ${SIMPLE_MOBILITY.map(x=>`<div class="simple-move"><div class="smn">${x[0]}</div><div class="smt">${x[1]}</div></div>`).join('')}
+          <div class="note">Do this 7 days a week. It's what keeps the back pain gone and gets you to your toes.</div></div>
+      </div>
+    </div>
+    <div class="grid g3" style="margin-top:16px">
+      <div class="card"><div class="ch"><h3>Fuel</h3><span class="pill e">daily</span></div>
+        <div class="simple-move"><div class="smn">Calories</div><div class="smt">${fmt(m.cal)} kcal</div></div>
+        <div class="simple-move"><div class="smn">Protein</div><div class="smt">${m.protein} g</div></div>
+        <div class="simple-move"><div class="smn">Water</div><div class="smt">3–4 L</div></div>
+        <div class="simple-move"><div class="smn">Creatine</div><div class="smt">5 g</div></div>
+        <p style="font-size:12px;color:var(--muted);margin:12px 0 0"><b>Rule:</b> 4 meals + 1 shake. Protein at every meal. Behind on calories? Add a shake.</p></div>
+      <div class="card"><div class="ch"><h3>Recover</h3><span class="pill s">nightly</span></div>
+        <div class="simple-move"><div class="smn">Sleep</div><div class="smt">${SLEEP.needHrs} hrs</div></div>
+        <div class="simple-move"><div class="smn">Same bed/wake time</div><div class="smt">±30 min</div></div>
+        <div class="simple-move"><div class="smn">Deload week</div><div class="smt">every ~7 wks</div></div>
+        <p style="font-size:12px;color:var(--muted);margin:12px 0 0">One full rest day a week (Sunday). Ease off, don't stop moving.</p></div>
+      <div class="card"><div class="ch"><h3>Aim & progress</h3><span class="pill">the goal</span></div>
+        <div class="simple-move"><div class="smn">Goal weight</div><div class="smt">${S.profile.goalWeight} lb</div></div>
+        <div class="simple-move"><div class="smn">Weigh-in</div><div class="smt">+0.5 lb/wk</div></div>
+        <div class="simple-move"><div class="smn">Tape</div><div class="smt">every 4 wks</div></div>
+        <div class="simple-move"><div class="smn">Timeline</div><div class="smt">~18–24 mo</div></div>
+        <p style="font-size:12px;color:var(--muted);margin:12px 0 0">Phase moves up on its own as you gain. Just keep adding reps/weight and eating.</p></div>
+    </div>
+    <div class="note warn" style="margin-top:16px">This simple version gets you to the goal on its own. The detailed tabs are there for the days you want more — pick whichever you'll actually be consistent with. Consistency beats perfection every time.</div>`;
+}
+
+/* ---------------- SVG LINE CHART ---------------- */
+function drawLine(sel,data,opt={}){const box=$(sel);if(!box)return;const W=440,H=200,pad=30;
+  if(!data||data.length<2){box.innerHTML=`<div class="note" style="margin:0">Log at least 2 entries to see your trend line.</div>`;return;}
+  let vals=data.slice(),min=Math.min(...vals),max=Math.max(...vals);
+  if(opt.goal!=null){min=Math.min(min,opt.goal);max=Math.max(max,opt.goal);}if(opt.start!=null){min=Math.min(min,opt.start);max=Math.max(max,opt.start);}
+  if(min===max){min-=1;max+=1;}const range=max-min;
+  const x=i=>pad+i*((W-pad*2)/(vals.length-1));const y=v=>opt.invert?pad+((v-min)/range)*(H-pad*2):H-pad-((v-min)/range)*(H-pad*2);
+  const path=vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+  let goalLn='';if(opt.goal!=null){const gy=y(opt.goal).toFixed(1);goalLn=`<path class="goal" d="M${pad} ${gy} L${W-pad} ${gy}"/><text x="${W-pad}" y="${(+gy)-5}" text-anchor="end">goal ${opt.goal}</text>`;}
+  const dots=vals.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${i===vals.length-1?3.5:2.2}"/>`).join('');
+  box.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"><line class="grid" x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}"/>${goalLn}<path class="ln" d="${path}"/>${dots}<text x="${pad}" y="${H-8}">${vals.length} logs</text><text x="${W-pad}" y="${H-8}" text-anchor="end" style="fill:var(--ember)">${vals[vals.length-1]}${opt.unit||''}</text><text x="${pad-4}" y="${y(max)+3}" text-anchor="end">${max.toFixed(0)}</text><text x="${pad-4}" y="${y(min)+3}" text-anchor="end">${min.toFixed(0)}</text></svg>`;}
+
+/* ============================================================
+   ROUTER + WIRING
+   ============================================================ */
+const PAGES={dash:pgDash,daily:pgDaily,mobility:pgMobility,train:pgTrain,schedule:pgSchedule,recovery:pgRecovery,nutrition:pgNutrition,timeline:pgTimeline,metrics:pgMetrics,print:pgPrint};
+function render(page,scroll=true){
+  main.innerHTML=PAGES[page]();
+  const pg=main.querySelector('.page'); if(pg)pg.classList.add('on');   /* <-- router fix */
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('on',b.dataset.go===page));
+  if(page==='dash')renderWeekMini();
+  if(page==='daily')wireDaily();
+  if(page==='mobility')wireMobility();
+  if(page==='train')wireTrain();
+  if(page==='schedule')renderWeekFull();
+  if(page==='recovery')wireRecovery();
+  if(page==='nutrition')wireNutrition();
+  if(page==='timeline')renderPhases();
+  if(page==='metrics')wireMetrics();
+  $('#navphase').textContent=`Phase ${currentPhase()} — ${PHASES[currentPhase()-1].t.split('&')[0].split(',')[0].trim()}`;
+  if(scroll)window.scrollTo(0,0);
+  closeNav();
+}
+function goto(p){render(p);}
+window.goto=goto;window.delFood=delFood;
+
+function wireDaily(){renderDaily();document.querySelectorAll('#dmodeseg button').forEach(b=>{b.onclick=()=>{dailyMode=b.dataset.m;document.querySelectorAll('#dmodeseg button').forEach(x=>x.classList.toggle('on',x===b));renderDaily();};});}
+function wireMobility(){renderMobList();renderToe();$('#mobreset').onclick=()=>{S.mobilityDone[todayStr()]=[];renderMobList();persist();};$('#ttlog').onclick=()=>{const v=$('#ttinput').value;if(v===''){$('#ttinput').focus();return;}S.toeTouch.push({date:todayStr(),gap:Number(v)});$('#ttinput').value='';renderToe();persist();};}
+function wireTrain(){document.querySelectorAll('#modeseg button').forEach(b=>{b.onclick=()=>{trainMode=b.dataset.mode;trainDay=null;document.querySelectorAll('#modeseg button').forEach(x=>x.classList.toggle('on',x===b));renderDaySeg();renderExos();};});renderDaySeg();renderExos();}
+function wireRecovery(){renderSleep();$('#sleeplog').onclick=()=>{const v=Number($('#sleepin').value);if(!v){$('#sleepin').focus();return;}S.sleepLog.push({date:todayStr(),h:v});$('#sleepin').value='';renderSleep();persist();};}
+function wireNutrition(){renderSupps();renderNutritionDay();$('#addfood').onclick=()=>{const name=$('#fname').value.trim()||'Meal';const cal=Number($('#fcal').value)||0,p=Number($('#fp').value)||0,c=Number($('#fc').value)||0,f=Number($('#ff').value)||0;if(!cal&&!p&&!c&&!f){$('#fcal').focus();return;}const t=todayStr();if(!S.nutritionLog[t])S.nutritionLog[t]=[];S.nutritionLog[t].push({name,cal,p,c,f});['#fname','#fcal','#fp','#fc','#ff'].forEach(s=>$(s).value='');renderNutritionDay();persist();};}
+function wireMetrics(){renderMetrics();
+  $('#wlogbtn').onclick=()=>{const v=Number($('#wlog').value);if(!v){$('#wlog').focus();return;}S.weightLog.push({date:todayStr(),w:v});$('#wlog').value='';renderMetrics();persist();$('#navphase').textContent=`Phase ${currentPhase()} — ${PHASES[currentPhase()-1].t.split('&')[0].split(',')[0].trim()}`;};
+  $('#mlogbtn').onclick=()=>{const m={date:todayStr(),shoulders:+$('#mS').value||null,chest:+$('#mC').value||null,waist:+$('#mW').value||null,arm:+$('#mA').value||null,forearm:+$('#mF').value||null,thigh:+$('#mT').value||null};if(!m.shoulders&&!m.chest&&!m.waist&&!m.arm&&!m.forearm&&!m.thigh){$('#mS').focus();return;}S.measure.push(m);['#mS','#mC','#mW','#mA','#mF','#mT'].forEach(s=>$(s).value='');renderMetrics();persist();};
+  $('#savesettings').onclick=()=>{S.profile.startWeight=+$('#setStart').value||S.profile.startWeight;S.profile.goalWeight=+$('#setGoal').value||S.profile.goalWeight;S.profile.heightIn=+$('#setH').value||S.profile.heightIn;S.profile.age=+$('#setAge').value||S.profile.age;S.profile.activity=+$('#setAct').value||S.profile.activity;persist();render('metrics');};
+  $('#exportbtn').onclick=()=>{
+    const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`blueprint-backup-${todayStr()}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    $('#backupnote').innerHTML=`✓ Backup downloaded as <b>blueprint-backup-${todayStr()}.json</b> at ${new Date().toLocaleTimeString()}.`;
+  };
+  $('#importbtn').onclick=()=>$('#importfile').click();
+  $('#importfile').onchange=(e)=>{
+    const file=e.target.files[0]; if(!file)return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const parsed=JSON.parse(reader.result);
+        if(!confirm('This will replace all current data in the app with the contents of this backup file. Continue?'))return;
+        S=Object.assign({},DEFAULTS,parsed);
+        S.benchmarks=Object.assign({1:[],2:[],3:[]},S.benchmarks||{});
+        S.profile=Object.assign({},DEFAULTS.profile,S.profile||{});
+        S.sleepLog=S.sleepLog||[];
+        persist(); render('metrics');
+        $('#backupnote').innerHTML=`✓ Backup restored successfully.`;
+      }catch(err){ $('#backupnote').innerHTML=`✕ Could not read that file — is it a Blueprint backup .json?`; }
+    };
+    reader.readAsText(file);
+    e.target.value='';
+  };
+}
+
+document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>render(b.dataset.go));
+const side=$('#side'),scrim=$('#scrim');
+function closeNav(){side.classList.remove('open');scrim.classList.remove('on');}
+$('#menubtn').onclick=()=>{side.classList.toggle('open');scrim.classList.toggle('on');};
+scrim.onclick=closeNav;
+
+(function(){const raw=store.get(KEY);
+  if(raw){try{S=Object.assign({},DEFAULTS,JSON.parse(raw));}catch(e){S=JSON.parse(JSON.stringify(DEFAULTS));}}else{S=JSON.parse(JSON.stringify(DEFAULTS));}
+  S.benchmarks=Object.assign({1:[],2:[],3:[]},S.benchmarks||{});
+  S.profile=Object.assign({},DEFAULTS.profile,S.profile||{});
+  S.sleepLog=S.sleepLog||[];
+  render('dash');
+})();
+</script>
