@@ -12,7 +12,19 @@ Verified via automated smoke-testing (rendering every tab in a headless DOM, plu
 - ✅ Print stylesheet (`@media print`) strips the dark theme and hides interactive controls for the Print Master Sheet and the Daily Plan's "print the week" view.
 - ✅ Backup/Restore (export to `.json`, import from `.json`) is wired up. Export uses `Blob` + `URL.createObjectURL`, which is standard in all real browsers. (Note: this specific browser API isn't fully implemented in the `jsdom` sandbox I used for automated testing, so that one piece was verified by code review and the DOM being present/wired, not an automated click-through. Worth a manual click-test in an actual browser before you rely on it.)
 
-## Known bug that was fixed in this pass
+## Phone-app pass (home-screen web app)
+
+- **Installable PWA:** `manifest.webmanifest`, `sw.js` (offline cache; network-first for the page with a 3 s timeout, cache-first for fonts/icons), app icons in `icons/`, iOS meta tags, safe-area insets for the notch/home indicator.
+- **Mobile shell:** under 880px the sidebar is replaced by a blurred top app bar + bottom tab bar (Home · Today · Train · Fuel · More) and a "More" bottom sheet. Desktop keeps the sidebar. Long intro paragraphs collapse to 3 lines on phones (tap to expand). Inputs are 16px so iOS doesn't zoom on focus; hover effects only apply on devices that actually hover.
+- **Date bug fixed:** `todayStr()` used `toISOString()` (UTC), so in North America "today" rolled over in the late afternoon/evening — splitting food logs, resetting mobility checkboxes and breaking streaks. Dates are now local calendar days (`ymd()` / `parseYmd()`). `liftsThisWeek()` also mis-parsed `"YYYY-MM-DD"` as UTC midnight and dropped Monday's lifts. Logs saved before this fix keep whatever date they were stored with.
+- **Saving:** the "✓ Saved" toast now reflects whether the write succeeded (red error toast if storage is full/blocked), and pending writes are flushed when the app is backgrounded (iOS can kill a home-screen app instantly).
+- **Backup:** export uses the phone share sheet (Save to Files, AirDrop…) where supported, otherwise a normal download; `S.lastBackup` drives a reminder on Home/Today after 14 days. Import now rejects JSON that isn't a Blueprint backup instead of silently resetting data.
+- **Today tab:** one-tap "workout done" (`S.dailyDone`) and "mobility done" (`S.quickMob`) — both feed the weekly-lift count and mobility streak.
+- **Training:** weight field pre-fills from your last set, "undo last" for a mistyped set, and "Last time" stays visible while logging today. Gym/No-Gym choice and last-open tab are remembered per device (`blueprint:ui:v1`, not part of backups).
+- **Nutrition page overflowed a phone screen** (the whole layout zoomed out); fixed with `minmax(0,1fr)` columns and wrapping long supplement doses. Food names are HTML-escaped.
+- Added `<!doctype html>` — the page was previously rendering in quirks mode.
+
+## Known bug that was fixed in an earlier pass
 
 The previous draft only ever showed the Dashboard tab — every other page's root `<div class="page">` was missing the `.on` class that makes it visible, because only `pgDash()`'s template hardcoded `class="page on"`. Every other page function just wrote `class="page"`. Fixed by having the router (`render()`) always add `.on` to whatever page it just injected, instead of relying on each page template to remember to include it. If you add new pages later, you don't need to worry about this — the router handles it.
 
@@ -20,13 +32,13 @@ The previous draft only ever showed the Dashboard tab — every other page's roo
 
 The previous version used `window.storage`, an API that **only exists inside Claude.ai's artifact sandbox.** It would have silently failed everywhere else — a real browser, GitHub Pages, or a file opened locally — because `window.storage` simply wouldn't exist, and every save/load call was wrapped in a `try/catch` that swallowed the resulting error. That means the app would have *looked* like it was saving (the "✓ Saved" toast would even still fire, because the toast isn't conditional on success) while actually saving nothing.
 
-This has been rewritten to use the browser's built-in `localStorage`, which is synchronous, has no dependency on any host environment, and is what the README now documents accurately. If you ever see the "✓ Saved" toast not matching reality again, check `persist()` and `store.set()` first — that toast currently fires optimistically rather than based on a confirmed write.
+This has been rewritten to use the browser's built-in `localStorage`, which is synchronous, has no dependency on any host environment, and is what the README now documents accurately. The "✓ Saved" toast is now driven by the return value of `store.set()`.
 
 ## Personal data that was found and removed/flagged
 
 - A supplement note under Vitamin D3 referenced a specific city ("Calgary winter"). This was hardcoded into the app's content and would have shipped to anyone who read the page. It's been generalized to "northern latitudes." If you fork this for someone else or make it public, do a search for any other personalized phrasing you added later.
 - The default profile values (start weight 167 lb, goal weight 195 lb, height 74 in, age 22, activity multiplier 1.6) are **runtime-editable defaults**, not identity information — but they are still specific numbers describing one real person, sitting in the `DEFAULTS` object in plain sight. Not a security issue, but worth knowing before you show someone else the source code or a screen-share of your editor.
-- No API keys, tokens, account info, or other credentials exist anywhere in this codebase. It makes zero network calls other than the static Google Fonts CDN request.
+- No API keys, tokens, account info, or other credentials exist anywhere in this codebase. It makes zero network calls other than loading its own files (fonts are self-hosted).
 
 ## Design decisions that aren't obvious from the code
 
@@ -39,10 +51,9 @@ This has been rewritten to use the browser's built-in `localStorage`, which is s
 
 - **Cross-device sync.** Right now everything is trapped in one browser via `localStorage`. If you want this on your phone *and* your laptop with shared data, you need a real backend (even something minimal like a Cloudflare Worker + KV store, or Firebase/Supabase) plus some form of auth. This is a genuine architecture change, not a tweak.
 - **Automated progression suggestions.** The app currently just shows your last logged sets; it doesn't yet suggest "you hit the top of your rep range last time, add 5 lb today." That logic would live in `renderExos()` / `logSet()` in the Training tab and would be a nice, contained next feature.
-- **A real "did I skip today" nudge.** The mobility streak counter exists, but there's no push notification or reminder system (this is a static page — it can't notify you when it's not open). If you want reminders, that requires either a native app wrapper, a PWA with notification permissions, or an external reminder tool (calendar, phone alarm) — worth deciding deliberately rather than half-building.
+- **A real "did I skip today" nudge.** The app is now an installable PWA, but it has no push notifications (that needs a push server; iOS only allows web push for home-screen apps). A phone alarm or calendar reminder is the zero-effort option.
 - **A "phase readiness" check instead of a pure weight threshold.** Cross-reference the phase's benchmark checkboxes with the bodyweight-based auto-detection, and only advance the phase number once both agree, or at least flag the mismatch.
 - **Data visualization depth.** The line charts are hand-rolled inline SVG (see `drawLine()`) to avoid a charting-library dependency. That's fine at this scale, but if you want zoom/pan/tooltips, that's the point where pulling in a small charting library becomes worth the tradeoff.
-- **PWA / installable app.** Adding a manifest + service worker would let this be "installed" to a phone home screen and work offline (fonts aside) without becoming a native app. Independent of any backend work above.
 
 ## Testing notes
 
