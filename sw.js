@@ -2,7 +2,7 @@
    The page itself is fetched fresh whenever the network answers quickly, so updates
    show up on the next launch; everything else is served from cache.
    Bump VERSION when fonts or icons change. */
-const VERSION = 'blueprint-v1';
+const VERSION = 'blueprint-v2';
 const ASSETS = [
   './',
   './index.html',
