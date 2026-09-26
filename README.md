@@ -7,15 +7,15 @@ This is a **personal-use tool**, not a commercial product. It was built for one 
 ## Features
 
 - **Phone app** — add it to your home screen and it opens full-screen with its own icon, a bottom tab bar (Home · Today · Train · Fuel · More), and works with no signal.
-- **Dashboard** — live progress bar to goal weight, current phase, this week at a glance, a rotating motivation line.
-- **Daily Plan (Simple)** — one fixed workout per weekday (memorize Monday = Push, Tuesday = Legs & Jump, etc.), gym and no-gym versions, with live streaks and weekly-lift-count indicators, plus one-tap "workout done" / "mobility done" buttons. Printable as a one-page weekly cheat sheet.
-- **Mobility & Back** — a ~12-minute daily routine with the reasoning behind each drill, a toe-touch distance tracker with a regression ladder, and a progress chart.
-- **Training** — full Gym program (dumbbell/cable/machine, 4-day upper/lower split) and a full No-Equipment/Travel program, both with set/rep logging, exercise notes, and progression logic. Includes plyometric/vertical-jump and grip-training guidance.
+- **Dashboard** — live progress bar to goal weight, current phase, this week at a glance, a rotating motivation line, and your rate of gain with a "eat more / eat less" call.
+- **Daily Plan (Simple)** — one fixed workout per weekday (memorize Monday = Push, Tuesday = Legs & Jump, etc.), gym and no-gym versions, with live streaks and weekly-lift-count indicators, the current training week and when the next deload falls, plus one-tap "workout done" / "mobility done" buttons. Printable as a one-page weekly cheat sheet.
+- **Mobility & Back** — a ~12-minute daily routine with the reasoning behind each drill, a toe-touch distance tracker ("short of floor" / "past toes") with a regression ladder, and a progress chart.
+- **Training** — full Gym program (dumbbell/cable/machine, 4-day upper/lower split) and a full No-Equipment/Travel program, both with set/rep logging and exercise notes. Opens on today's scheduled session; each exercise shows today's target from your last session ("add weight" once you hit the top of the rep range on every set, otherwise "same weight, add a rep"), flags Phase 2/3 moves that are too early, and switches to deload guidance on deload weeks. Logging a set starts a rest timer (2 min for heavier compounds, 90 s otherwise) that keeps the screen awake while it counts. Includes plyometric/vertical-jump and grip-training guidance.
 - **Weekly Schedule** — the fixed weekly structure with a day-by-day breakdown.
 - **Recovery & Sleep** — sleep-hours guidance, deload cadence, and a nightly sleep logger with a 7-day average chart.
-- **Nutrition & Fuel** — calorie/macro targets computed live from your logged bodyweight (Mifflin-St Jeor + activity multiplier), a protein food-source table, a ranked supplement list, and a daily food logger.
-- **Timeline & Phases** — three training phases with explicit differences (rep ranges, effort, volume, calories) and checkable benchmarks per phase. The active phase is auto-detected from logged bodyweight.
-- **Metrics** — bodyweight and body-measurement logging with charts, plan settings (goal weight, height, age, activity level), and a **Backup & Restore** tool (export/import your data as a `.json` file).
+- **Nutrition & Fuel** — calorie/macro targets computed live from your 7-day average bodyweight (Mifflin-St Jeor + activity multiplier + an optional calorie adjustment), a rate-of-gain check that offers a one-tap ±200 kcal change when you're gaining too slowly or too fast, a protein food-source table, a ranked supplement list, and a daily food logger with one-tap re-add of recent meals.
+- **Timeline & Phases** — three training phases with explicit differences (rep ranges, effort, volume, calories) and checkable benchmarks per phase. The active phase is auto-detected from your 7-day average bodyweight, so one heavy or light day doesn't flip it.
+- **Metrics** — bodyweight and body-measurement logging with dated charts, plan settings (goal weight, height, age, activity level, calorie adjustment, plan start date), and a **Backup & Restore** tool (export/import your data as a `.json` file). Every log (weight, measurements, sleep, toe-touch) can be corrected or deleted; logging again on the same day replaces that day's entry, and obviously wrong numbers (e.g. a 1675 lb weigh-in) are rejected.
 - **Print Master Sheet** — a condensed, print-optimized version of the entire plan for a physical printout.
 
 ## Install it on your phone

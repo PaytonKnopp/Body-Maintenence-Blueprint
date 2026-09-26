@@ -250,7 +250,7 @@
   @media print{
     @page{margin:1.4cm}
     body{background:#fff!important}
-    nav.side,.appbar,.tabbar,.sheet,.saved{display:none!important}
+    nav.side,.appbar,.tabbar,.sheet,.saved,.rest,details.recent{display:none!important}
     .shell{display:block!important}
     main{max-width:none!important;padding:0!important}
     .page{display:none!important}
@@ -292,6 +292,28 @@
   .done-btn.is-done{background:rgba(132,176,106,.14);color:var(--green);border:1px solid rgba(132,176,106,.45)}
   .logline .undo{margin-left:8px;color:var(--muted);text-decoration:underline;font-size:11px;padding:4px 2px}
   .ind .ix{font-size:11px;color:var(--muted);margin-top:6px;font-family:'JetBrains Mono'}
+  .target{font-size:12.5px;margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+  .target b{color:var(--ink)}
+  .target.go{border-color:rgba(132,176,106,.45)}.target.go b{color:var(--green)}
+  .upflag{font-size:10px;font-family:'JetBrains Mono';font-weight:500;color:var(--green);border:1px solid rgba(132,176,106,.45);border-radius:20px;padding:1px 7px;margin-left:4px;white-space:nowrap;vertical-align:2px}
+  .upflag.later{color:var(--faint);border-color:var(--line2)}
+  details.recent{margin-top:12px;font-size:13px}
+  details.recent summary{cursor:pointer;color:var(--muted);font-size:12px;padding:6px 0}
+  .entry{display:flex;align-items:center;gap:12px;padding:4px 0;border-bottom:1px solid var(--line)}
+  .entry .mono{color:var(--faint);font-size:12px;width:92px;flex-shrink:0}
+  .entry span:nth-child(2){flex:1}
+  .del{color:var(--faint);padding:8px 10px;border-radius:6px;font-size:13px}
+  @media(hover:hover){.del:hover{color:var(--red);background:var(--surface2)}}
+  .chipbtn{font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:7px 12px;color:var(--muted);margin:0 6px 6px 0}
+  .chipbtn b{color:var(--ink);font-weight:600}
+  .chipbtn:active{border-color:var(--ember)}
+  .rest{position:fixed;right:24px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:51;display:none;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--steel);border-radius:14px;padding:7px 7px 7px 14px;box-shadow:var(--shadow)}
+  .rest.show{display:flex}
+  .rest .rl{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--steel)}
+  .rest b{font-family:'JetBrains Mono';font-size:18px;min-width:50px}
+  .rest button{font-size:13px;padding:8px 11px;border-radius:9px;border:1px solid var(--line2);color:var(--ink)}
+  .rest.done{border-color:var(--green)}.rest.done b,.rest.done .rl{color:var(--green)}
+  @media(max-width:880px){.rest{right:auto;left:50%;transform:translateX(-50%);bottom:calc(132px + env(safe-area-inset-bottom))}}
 </style>
 </head>
 <body>
@@ -325,6 +347,7 @@
   <main id="main"></main>
 </div>
 <div class="saved" id="toast" role="status" aria-live="polite">✓ Saved</div>
+<div class="rest" id="rest"><span class="rl">Rest</span><b id="resttime">1:30</b><button id="restplus">+30s</button><button id="restx" aria-label="Stop rest timer">✕</button></div>
 
 <nav class="tabbar" id="tabbar" aria-label="Main">
   <button class="tab" data-go="dash"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg>Home</button>
@@ -366,11 +389,16 @@ const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${Str
 const todayStr=()=>ymd(new Date());
 const parseYmd=s=>{const [y,m,d]=String(s).split('-').map(Number);return new Date(y,(m||1)-1,d||1);};
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const addDays=(ds,n)=>{const d=parseYmd(ds);d.setDate(d.getDate()+n);return ymd(d);};
+const daysBetween=(a,b)=>Math.round((parseYmd(b)-parseYmd(a))/864e5);
+const byDate=(a,b)=>String(a.date)<String(b.date)?-1:String(a.date)>String(b.date)?1:0;
+/* One entry per calendar day: logging again the same day replaces it, so re-entering fixes a typo instead of adding a second point */
+function upsertDay(arr,entry){const i=arr.findIndex(x=>x.date===entry.date);if(i>=0)arr[i]=entry;else{arr.push(entry);arr.sort(byDate);}}
 const DEFAULTS={
-  profile:{startWeight:167,goalWeight:195,heightIn:74,age:22,activity:1.6},
+  profile:{startWeight:167,goalWeight:195,heightIn:74,age:22,activity:1.6,calAdj:0,startDate:null},
   weightLog:[{date:todayStr(),w:167}],
   measure:[], toeTouch:[], mobilityDone:{}, trainLog:{}, benchmarks:{1:[],2:[],3:[]},
-  nutritionLog:{}, sleepLog:[], custom:{}, dailyDone:{}, quickMob:{}, lastBackup:null
+  nutritionLog:{}, sleepLog:[], custom:{}, dailyDone:{}, quickMob:{}, lastBackup:null, lastCalAdj:null
 };
 let S=null, saveTimer=null;
 function flush(){ if(saveTimer===null)return true; clearTimeout(saveTimer); saveTimer=null; return store.set(KEY,JSON.stringify(S)); }
@@ -388,7 +416,11 @@ function normalize(data){
   out.benchmarks=Object.assign({1:[],2:[],3:[]},out.benchmarks||{});
   ['weightLog','measure','toeTouch','sleepLog'].forEach(k=>{ if(!Array.isArray(out[k]))out[k]=[]; });
   ['mobilityDone','trainLog','nutritionLog','custom','dailyDone','quickMob'].forEach(k=>{ if(!out[k]||typeof out[k]!=='object'||Array.isArray(out[k]))out[k]={}; });
+  out.weightLog=out.weightLog.filter(x=>x&&isFinite(x.w));
   if(!out.weightLog.length)out.weightLog=[{date:todayStr(),w:out.profile.startWeight}];
+  ['weightLog','measure','toeTouch','sleepLog'].forEach(k=>out[k].sort(byDate));
+  out.profile.calAdj=Number(out.profile.calAdj)||0;
+  if(!out.profile.startDate)out.profile.startDate=out.weightLog[0].date;   /* week counter + deload cadence count from here */
   return out;
 }
 /* UI preferences (last tab, gym/no-gym) — per device, not part of backups */
@@ -435,7 +467,7 @@ const GYM={
     {id:"g_face",nm:"Face Pull",s:"3 × 15–20",why:"Rear delts + external rotators = the 'back' of wide shoulders and shoulder INSURANCE. Balances all your pressing.",cues:["Pull to the forehead","Rotate pinkies back","Keep elbows high"],alt:"Band face pull, or prone Y-T-W raises"}
   ],
   "Lower A — Back-Safe Strength + Vert":[
-    {id:"g_jump",nm:"Box Jump / Pogo Hops",s:"4 × 3 (P2+)",why:"PRIME for VERT and explosiveness. Done fresh, before the heavy work, these train fast force — the basis of jumping in volleyball/basketball. Quality over quantity, full rest. Add in Phase 2.",cues:["Land soft & quiet","Reset every rep","Step down, never jump down"],alt:"Broad jumps / tuck jumps on grass"},
+    {id:"g_jump",plyo:true,nm:"Box Jump / Pogo Hops",s:"4 × 3 (P2+)",why:"PRIME for VERT and explosiveness. Done fresh, before the heavy work, these train fast force — the basis of jumping in volleyball/basketball. Quality over quantity, full rest. Add in Phase 2.",cues:["Land soft & quiet","Reset every rep","Step down, never jump down"],alt:"Broad jumps / tuck jumps on grass"},
     {id:"g_gob",nm:"Goblet Squat",s:"3 × 10–12",why:"Teaches an upright, back-friendly squat. The front-loaded DB forces a vertical torso, sparing the lumbar spine while you rebuild the pattern.",cues:["Elbows inside knees","Sit between the hips","Heels glued down"],alt:"Backpack goblet squat or tempo air squat"},
     {id:"g_lp",nm:"Leg Press / Hack Squat",s:"3 × 12",why:"Heavy quad/glute loading with the back fully supported. How you train legs HARD without spinal compression.",cues:["Feet mid-platform","Don't round the low back","Stop before the glutes lift"],alt:"Bulgarian split squat (backpack loaded)"},
     {id:"g_rdl",nm:"DB Romanian Deadlift (light)",s:"3 × 10",why:"Re-grooves the HINGE your tight hamstrings stole. Start light — it's a mobility + strength drill before it's a strength lift.",cues:["Push hips BACK","Soft knees","Stop at first hamstring stretch — don't chase the floor yet"],alt:"Single-leg RDL, bodyweight or backpack"},
@@ -453,7 +485,7 @@ const GYM={
     {id:"g_grip",nm:"Dead Hang + Plate Pinch",s:"3 × max hold",why:"Direct GRIP and forearm work — grip is the bottleneck for everything 'functional': carrying, hauling, holding a bat. Crushing grip also boosts whole-body force output.",cues:["Hang full, shoulders active","Pinch plates smooth-side out","Time every set, beat it"],alt:"Towel dead hang / backpack-handle pinch carry"}
   ],
   "Lower B — Power, Carries & Posterior":[
-    {id:"g_dj",nm:"Depth Jump / Broad Jump",s:"4 × 3 (P3)",why:"Reactive POWER for max vert — the stretch-shortening cycle that makes you spring off the floor. Advanced; add only in Phase 3 once landings are clean. Full rest between reps.",cues:["Minimal ground contact","Stick the landing","Stop if form degrades"],alt:"Broad jumps / bounding on grass"},
+    {id:"g_dj",plyo:true,nm:"Depth Jump / Broad Jump",s:"4 × 3 (P3)",why:"Reactive POWER for max vert — the stretch-shortening cycle that makes you spring off the floor. Advanced; add only in Phase 3 once landings are clean. Full rest between reps.",cues:["Minimal ground contact","Stick the landing","Stop if form degrades"],alt:"Broad jumps / bounding on grass"},
     {id:"g_bss",nm:"Bulgarian Split Squat",s:"3 × 8–10/leg",why:"Single-leg strength fixes side-to-side imbalances (injury insurance) and loads legs hard with DBs — no spinal bar needed.",cues:["Rear foot elevated","Roughly vertical front shin","Slow down, drive up"],alt:"Backpack Bulgarian split squat"},
     {id:"g_ht",nm:"DB Hip Thrust",s:"3 × 10–12",why:"Glute strength = the engine of jumping, sprinting and hauling, plus a huge back-pain protector. Trains hip extension with zero spinal load.",cues:["Chin tucked","Full lockout squeeze","Ribs down"],alt:"Single-leg hip thrust off a couch"},
     {id:"g_tb",nm:"Trap-Bar Deadlift (progression goal)",s:"3 × 6–8",why:"Your safe road back to heavy pulling — neutral handles + centred load keep the bar in line with your spine, far kinder than a conventional deadlift. Build TOTAL-body & grip strength. Add only once the hinge is pain-free (Phase 2+).",cues:["Push the floor away","Neutral spine","Light & perfect first"],alt:"Heavy backpack/DB RDL or kettlebell deadlift"},
@@ -482,7 +514,7 @@ const TRAVEL={
     {id:"t_hang",nm:"Dead Hang",s:"3 × max",why:"Pure GRIP + a passive decompression for the spine. Grip strength caps everything functional, so train it daily if you can.",cues:["Full hang, shoulders active","Time it, beat it","Towel for extra challenge"],alt:"Backpack-strap pinch hold"}
   ],
   "Legs, Power & Core":[
-    {id:"t_jump",nm:"Broad / Tuck Jumps",s:"4 × 3–5",why:"VERT and explosiveness, no equipment. Train fast force fresh, before the grind. Land soft on grass when possible.",cues:["Max effort each rep","Stick the landing","Full rest between sets"],alt:"Pogo hops for ankle stiffness"},
+    {id:"t_jump",plyo:true,nm:"Broad / Tuck Jumps",s:"4 × 3–5",why:"VERT and explosiveness, no equipment. Train fast force fresh, before the grind. Land soft on grass when possible.",cues:["Max effort each rep","Stick the landing","Full rest between sets"],alt:"Pogo hops for ankle stiffness"},
     {id:"t_split",nm:"Split Squat (backpack)",s:"3 × 12/leg",why:"Single-leg strength + balance with a loaded backpack. Keeps the legs growing and the hips healthy on the road.",cues:["Drop straight down","Front heel down","Tall torso"],alt:"Step-ups onto a chair"},
     {id:"t_slrdl",nm:"Single-Leg RDL",s:"3 × 10/leg",why:"Bodyweight hinge + balance — hamstrings and the hip-hinge your back needs, with built-in core demand.",cues:["Hips square","Reach the leg back","Slow & controlled"],alt:"Add a backpack to load it"},
     {id:"t_nord",nm:"Nordic Curl Negative",s:"3 × 5",why:"Anchor the feet, lower slowly. The most powerful hamstring strengthener that exists — and the #1 hamstring-injury preventer for athletes.",cues:["Resist the whole way down","Hands ready to catch","Quality over quantity"],alt:"Sliding leg curl on a towel"},
@@ -642,7 +674,46 @@ const $=s=>document.querySelector(s);
 const el=h=>{const d=document.createElement('div');d.innerHTML=h.trim();return d.firstElementChild;};
 const main=$('#main');
 const fmt=n=>Math.round(n).toLocaleString();
-function curWeight(){ return S.weightLog.length?S.weightLog[S.weightLog.length-1].w:S.profile.startWeight; }
+/* Bodyweight = average of the last 7 days of weigh-ins. Daily water swings of 2–3 lb shouldn't flip the phase
+   or the calorie target; if you weigh in weekly this is simply your latest weigh-in. */
+function curWeight(){ const L=S.weightLog; if(!L.length)return S.profile.startWeight; const cut=addDays(L[L.length-1].date,-6);
+  const win=L.filter(x=>x.date>=cut); return Math.round(win.reduce((a,x)=>a+x.w,0)/win.length*10)/10; }
+function lastWeighIn(){ return S.weightLog.length?S.weightLog[S.weightLog.length-1]:null; }
+/* Rate of gain in lb/week: least-squares slope over the last 4 weeks of weigh-ins (needs 3+ weigh-ins spanning 2+ weeks) */
+function gainRate(){ const L=S.weightLog; if(L.length<3)return null; const cut=addDays(L[L.length-1].date,-27);
+  const pts=L.filter(x=>x.date>=cut).map(x=>[daysBetween(cut,x.date),x.w]); if(pts.length<3||pts[pts.length-1][0]-pts[0][0]<14)return null;
+  const n=pts.length,mx=pts.reduce((a,p)=>a+p[0],0)/n,my=pts.reduce((a,p)=>a+p[1],0)/n;
+  const sxx=pts.reduce((a,p)=>a+(p[0]-mx)**2,0); return sxx?pts.reduce((a,p)=>a+(p[0]-mx)*(p[1]-my),0)/sxx*7:null; }
+/* The plan's own rule, automated: aim ≈0.5 lb/wk; under 0.25 add ~200 kcal, over 0.75 drop ~200 */
+const RATE_LO=0.25, RATE_HI=0.75, CAL_STEP=200, ADJ_WAIT=14;
+function rateCoach(){ const r=gainRate(), last=lastWeighIn(), gap=last?daysBetween(last.date,todayStr()):0;
+  if(r===null)return {tone:'',msg:'<b>Rate of gain:</b> weigh in at least weekly for 2+ weeks and this will tell you whether to eat more or less.'};
+  const rs=`${r>=0?'+':''}${r.toFixed(2)} lb/wk`;
+  if(gap>10)return {tone:'warn',msg:`<b>Rate of gain: ${rs}</b> as of your last weigh-in ${gap} days ago. Log a fresh weigh-in in Metrics so your targets stay accurate.`};
+  if(r<RATE_LO)return {tone:'warn',delta:CAL_STEP,msg:`<b>Rate of gain: ${rs}</b> over the last 4 weeks, below the ~0.5 lb/wk target. Eat ~${CAL_STEP} kcal more per day (mostly carbs).`};
+  if(r>RATE_HI)return {tone:'warn',delta:-CAL_STEP,msg:`<b>Rate of gain: ${rs}</b> over the last 4 weeks, faster than ~0.5 lb/wk, so the extra is mostly fat. Eat ~${CAL_STEP} kcal less per day.${planWeek()<=4?' (Weeks 1–4 include water, glycogen and creatine weight, so only cut if it continues.)':''}`};
+  return {tone:'',msg:`<b>Rate of gain: ${rs}</b> over the last 4 weeks. On target, so keep eating exactly like this.`}; }
+function coachNote(style=''){ const c=rateCoach(), la=S.lastCalAdj, wait=la&&daysBetween(la.date,todayStr())<ADJ_WAIT;
+  const act=c.delta?(wait?`<div style="margin-top:6px">You changed calories by ${la.delta>0?'+':''}${la.delta} on ${esc(la.date)}. Give it 2 weeks before changing again.</div>`
+    :`<div style="margin-top:10px"><button class="btn sm ${c.delta>0?'':'ghost'}" onclick="applyCalAdj(${c.delta})">${c.delta>0?'+':''}${c.delta} kcal to my daily target</button></div>`):'';
+  return `<div class="note ${c.tone}" style="${style}">${c.msg}${act}</div>`; }
+function applyCalAdj(d){ S.profile.calAdj=(S.profile.calAdj||0)+d; S.lastCalAdj={date:todayStr(),delta:d}; persist(); render(curPage,false); }
+window.applyCalAdj=applyCalAdj;
+/* Training week (from the plan start date in Metrics) and the deload every 7th week */
+const DELOAD_EVERY=7;
+function planWeek(){ return Math.max(1,Math.floor(daysBetween(S.profile.startDate||todayStr(),todayStr())/7)+1); }
+function isDeloadWeek(){ return planWeek()%DELOAD_EVERY===0; }
+function weekLine(){ const wk=planWeek(), left=DELOAD_EVERY-wk%DELOAD_EVERY;
+  return `Week ${wk} · ${isDeloadWeek()?'<b style="color:var(--gold)">deload week</b>':left===1?'deload next week':`deload in ${left} weeks`}`; }
+/* Recent entries with a delete button. Without it, one mistyped weigh-in skews the phase, macros and charts for good. */
+function recentList(key,label,fmtRow,n=6){ const arr=S[key]; if(!arr.length)return '';
+  const rows=arr.slice(-n).reverse().map((x,j)=>`<div class="entry"><span class="mono">${esc(x.date)}</span><span>${fmtRow(x)}</span><button class="del" onclick="delEntry('${key}',${arr.length-1-j})" aria-label="Delete ${esc(x.date)} entry">✕</button></div>`).join('');
+  return `<details class="recent" data-key="${key}"><summary>${label} · fix or delete</summary>${rows}<div style="font-size:11.5px;color:var(--faint);margin-top:8px">Logging again on the same day replaces that day's entry.</div></details>`; }
+function delEntry(key,i){ const x=S[key][i]; if(!x||!confirm(`Delete the ${x.date} entry?`))return; S[key].splice(i,1); persist(); render(curPage,false);
+  const d=main.querySelector(`details.recent[data-key="${key}"]`); if(d)d.open=true; }
+window.delEntry=delEntry;
+function bad(msg,sel){ toast('✕ '+msg,true); if(sel)$(sel).focus(); }
+function deloadNote(){ return isDeloadWeek()?`<div class="note warn" style="margin:0 0 16px"><b>Deload week (week ${planWeek()}).</b> Same sessions, but do ~60% of the sets at ~80% of your usual weight and stop well short of failure. It lets fatigue clear so the next block grows.</div>`:''; }
 function backupAge(){ if(!S.lastBackup)return null; const d=Math.floor((Date.now()-S.lastBackup)/864e5); return d<=0?'today':d===1?'yesterday':`${d} days ago`; }
 function hasLoggedData(){ return S.weightLog.length>1||S.measure.length||S.sleepLog.length||Object.keys(S.trainLog).length||Object.keys(S.nutritionLog).length||Object.keys(S.dailyDone).length; }
 function backupNudge(){ const stale=!S.lastBackup||(Date.now()-S.lastBackup)>14*864e5; if(!stale||!hasLoggedData())return '';
@@ -652,7 +723,7 @@ function pct(v,a,b){ return Math.max(0,Math.min(100,(v-a)/(b-a)*100)); }
 function macros(){
   const w=curWeight(),act=S.profile.activity,cm=S.profile.heightIn*2.54,kg=w/2.205;
   const bmr=10*kg+6.25*cm-5*S.profile.age+5, tdee=bmr*act;
-  const cal=Math.round((tdee+420)/10)*10, protein=Math.round(w*1.0), fat=Math.round(w*0.45);
+  const cal=Math.round((tdee+420+(S.profile.calAdj||0))/10)*10, protein=Math.round(w*1.0), fat=Math.round(w*0.45);
   const carbs=Math.round((cal-protein*4-fat*9)/4);
   return {cal,protein,fat,carbs,tdee:Math.round(tdee)};
 }
@@ -693,8 +764,8 @@ function pgDash(){
     <div class="motiv">"${motivationLine()}"</div>
     <p class="lead">Detrained ≠ starting from zero — you're a former athlete with muscle memory waiting to switch back on. This map is built around your exact targets: <b style="color:var(--ember)">wide shoulders</b>, a thick back, a crushing grip, strong legs and traps, and the explosive power for ball sports — all on a back that needs respect and dumbbell-only pressing.</p>
     <div class="grid g4" style="margin-top:24px">
-      <div class="stat"><div class="lab">Bodyweight</div><div class="num">${w}<small> lb</small></div><div class="delta ${gained>=0?'up':'dn'}">${gained>=0?'▲':'▼'} ${Math.abs(gained).toFixed(1)} lb from start</div></div>
-      <div class="stat"><div class="lab">To Goal</div><div class="num">${remain.toFixed(0)}<small> lb</small></div><div class="delta">target ${p.goalWeight} lb lean</div></div>
+      <div class="stat"><div class="lab">Bodyweight (avg)</div><div class="num">${w}<small> lb</small></div><div class="delta ${gained>=0?'up':'dn'}">${gained>=0?'▲':'▼'} ${Math.abs(gained).toFixed(1)} lb from start</div></div>
+      <div class="stat"><div class="lab">To Goal</div><div class="num">${Math.max(0,remain).toFixed(0)}<small> lb</small></div><div class="delta">target ${p.goalWeight} lb lean</div></div>
       <div class="stat"><div class="lab">Phase</div><div class="num">${ph}<small> / 3</small></div><div class="delta" style="color:var(--ember)">${PHASES[ph-1].t.split('&')[0].split(',')[0].trim()}</div></div>
       <div class="stat"><div class="lab">Daily Fuel</div><div class="num">${fmt(m.cal)}<small> kcal</small></div><div class="delta">${m.protein}P · ${m.carbs}C · ${m.fat}F</div></div>
     </div>
@@ -702,8 +773,8 @@ function pgDash(){
       <div class="card"><div class="ch"><h3>Journey to ${p.goalWeight} lb</h3><span class="pill e">lean bulk</span></div>
         <div class="barwrap"><div class="barrow"><span>${p.startWeight} lb start</span><b>${w} lb</b><span>${p.goalWeight} lb goal</span></div>
         <div class="bar"><i style="width:${pct(w,p.startWeight,p.goalWeight)}%"></i></div>
-        <div class="barrow" style="color:var(--faint)"><span>${pct(w,p.startWeight,p.goalWeight).toFixed(0)}% there</span><span>aim +0.25–0.5% bodyweight / wk</span></div></div>
-        <div class="note">Faster than ~0.5 lb/wk mostly adds fat; slower than 0.25 leaves muscle behind. Log weight weekly in <b>Metrics</b> and steer by the trend, not one day.</div></div>
+        <div class="barrow" style="color:var(--faint)"><span>${pct(w,p.startWeight,p.goalWeight).toFixed(0)}% there</span><span>aim ≈0.5 lb / wk</span></div></div>
+        ${coachNote()}</div>
       <div class="card"><div class="ch"><h3>This Week</h3><span class="pill">4 lifts · daily mobility</span></div><div id="weekmini"></div></div>
     </div>
     <div class="card" style="margin-top:16px"><div class="ch"><h3>The eight tabs</h3></div>
@@ -734,10 +805,12 @@ function pgMobility(){return `<div class="page on" id="p-mobility">
       <div id="moblist"></div>
       <button class="btn ghost sm" id="mobreset" style="margin-top:6px">Reset today</button></div>
     <div><div class="card"><div class="ch"><h3>Toe-Touch Tracker</h3><span class="pill s">north star</span></div>
-        <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px">Stand, hinge, reach down with near-straight legs. Measure the gap from fingertips to floor in cm — <b>negative</b> = past your toes. Log weekly.</p>
-        <div style="display:flex;gap:10px;align-items:flex-end"><div style="flex:1"><label class="fld">Gap to floor (cm)</label><input type="number" inputmode="decimal" id="ttinput" placeholder="e.g. 18 or -3" step="0.5"></div><button class="btn" id="ttlog">Log</button></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px">Stand, hinge, reach down with near-straight legs. Measure the gap between fingertips and floor in cm. Once you reach past the floor, switch to <b>Past toes</b>. Log weekly.</p>
+        <div class="seg" id="ttside" style="margin-bottom:10px"><button data-s="1" class="${lastToe()<0?'':'on'}">Short of floor</button><button data-s="-1" class="${lastToe()<0?'on':''}">Past toes</button></div>
+        <div style="display:flex;gap:10px;align-items:flex-end"><div style="flex:1"><label class="fld">Distance (cm)</label><input type="number" inputmode="decimal" id="ttinput" placeholder="e.g. 18" step="0.5" min="0"></div><button class="btn" id="ttlog">Log</button></div>
         <div id="ttmiles" style="margin-top:16px"></div></div>
-      <div class="card" style="margin-top:16px"><div class="ch"><h3>Toe-touch progress</h3></div><div id="ttchart"></div></div></div>
+      <div class="card" style="margin-top:16px"><div class="ch"><h3>Toe-touch progress</h3></div><div id="ttchart"></div>
+        ${recentList('toeTouch','Recent logs',x=>x.gap<0?`${Math.abs(x.gap)} cm past toes`:x.gap===0?'fingertips to floor':`${x.gap} cm short`)}</div></div>
   </div>
   <div class="card" style="margin-top:16px"><div class="ch"><h3>The regression ladder to a toe-touch</h3></div>
     <p class="sec-intro">Don't chase the floor — chase the <b>pattern</b>. Progress a rung only when the current one is pain-free and smooth.</p>
@@ -757,9 +830,10 @@ function renderMobList(){const box=$('#moblist');if(!box)return;const today=toda
     box.appendChild(node);});
   const n=done.filter(Boolean).length;$('#mobcount').textContent=`${n}/${MOBILITY.length} today`;}
 function toggleMob(i){const t=todayStr();if(!S.mobilityDone[t])S.mobilityDone[t]=[];S.mobilityDone[t][i]=!S.mobilityDone[t][i];renderMobList();persist();}
-function renderToe(){const box=$('#ttmiles');if(!box)return;const last=S.toeTouch.length?S.toeTouch[S.toeTouch.length-1].gap:null;
+const lastToe=()=>S.toeTouch.length?S.toeTouch[S.toeTouch.length-1].gap:null;
+function renderToe(){const box=$('#ttmiles');if(!box)return;const last=lastToe();
   box.innerHTML=TOE_MILES.map(ml=>{const hit=last!==null&&last<=ml.gap;return `<div class="chk ${hit?'done':''}" style="cursor:default"><div class="box">✓</div><div class="ct"><div class="t">${ml.label}</div>${ml.sub?`<div class="d">${ml.sub}</div>`:''}</div><div class="tag">${ml.gap>0?ml.gap+' cm':(ml.gap===0?'floor':Math.abs(ml.gap)+' past')}</div></div>`;}).join('');
-  drawLine('#ttchart',S.toeTouch.map(x=>x.gap),{invert:true,unit:'cm',goal:0});}
+  drawLine('#ttchart',S.toeTouch.map(x=>x.gap),{invert:true,unit:'cm',goal:0,dates:S.toeTouch.map(x=>x.date)});}
 
 /* ---------------- TRAINING ---------------- */
 let trainMode=UI.trainMode==='travel'?'travel':'gym',trainDay=UI.trainDay||null;
@@ -767,7 +841,8 @@ function pgTrain(){return `<div class="page on" id="p-train">
   <div class="ttl">Pillar B — Training</div>
   <h1 class="h-big">Engineer the frame.</h1>
   <p class="lead">Every session is biased toward your targets: <b>shoulder width</b> (high-volume lateral & rear delts), <b>back thickness</b> (chest-supported rows that spare your spine), plus dedicated <b>grip, traps, core and explosive jump work</b>. Toggle <b>Gym</b> or <b>No-Gym</b> — both are complete standalone programs, and every gym move lists its bodyweight swap. Log every set; progressive overload on these numbers is what grows you.</p>
-  <div style="display:flex;gap:12px;align-items:center;margin:22px 0 16px;flex-wrap:wrap">
+  <div style="margin-top:18px">${deloadNote()}</div>
+  <div style="display:flex;gap:12px;align-items:center;margin:4px 0 16px;flex-wrap:wrap">
     <div class="seg" id="modeseg"><button data-mode="gym" class="${trainMode==='gym'?'on':''}">🏋 Gym</button><button data-mode="travel" class="${trainMode==='travel'?'on':''}">🎒 No-Gym / Travel</button></div>
     <span class="pill" id="trainnote"></span></div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px" id="dayseg"></div>
@@ -784,21 +859,46 @@ function pgTrain(){return `<div class="page on" id="p-train">
   <div class="note warn" style="margin-top:16px"><b>Half-marathon, eventually?</b> Heavy running during a bulk blunts mass gains (the interference effect). Keep running to easy zone-2, 1–2×/wk, until you hit your size goals. Then run a dedicated 10–12 week half-marathon block in late Phase 3 / after — that's the time to ramp mileage.</div>
 </div>`;}
 function renderDaySeg(){const seg=$('#dayseg');if(!seg)return;const prog=trainMode==='gym'?GYM:TRAVEL;const days=Object.keys(prog);if(!trainDay||!days.includes(trainDay))trainDay=days[0];seg.innerHTML='';
-  days.forEach(d=>{const b=el(`<button class="btn ${d===trainDay?'':'ghost'} sm">${d}</button>`);b.onclick=()=>{trainDay=d;saveUI('trainDay',d);renderDaySeg();renderExos();};seg.appendChild(b);});
+  const ts=todaysSession(trainMode);
+  days.forEach(d=>{const b=el(`<button class="btn ${d===trainDay?'':'ghost'} sm">${d}${d===ts?' <span style="opacity:.65;font-weight:500">· today</span>':''}</button>`);b.onclick=()=>{trainDay=d;saveUI('trainDay',d);renderDaySeg();renderExos();};seg.appendChild(b);});
   $('#trainnote').textContent=trainMode==='gym'?'Dumbbells · cables · machines — no barbell bench':'Bodyweight + a backpack — anywhere';}
 function renderExos(){const box=$('#exolist');if(!box)return;const prog=trainMode==='gym'?GYM:TRAVEL;const list=prog[trainDay]||[];box.innerHTML='';
   list.forEach((ex,i)=>{const log=S.trainLog[ex.id]||[];const last=log.length?log[log.length-1]:null;
     const lastW=last&&last.sets.length?last.sets[last.sets.length-1].w:null;
-    const node=el(`<div class="exo"><div class="top"><div class="idx">${i+1}</div><div class="nm">${ex.nm}</div><div class="scheme">${ex.s}</div><div class="chev">▶</div></div>
+    const tg=target(ex);
+    const node=el(`<div class="exo"><div class="top"><div class="idx">${i+1}</div><div class="nm">${ex.nm}${tg.flag?` <span class="upflag ${tg.flag==='later'?'later':''}">${tg.flag==='up'?'▲ add weight':'not yet'}</span>`:''}</div><div class="scheme">${ex.s}</div><div class="chev">▶</div></div>
       <div class="body"><div class="why"><b>Why:</b> ${ex.why}</div><div>${ex.cues.map(c=>`<span class="cue">${c}</span>`).join('')}</div>
       ${ex.alt?`<div class="alt"><b>No-gym swap:</b> ${ex.alt}</div>`:''}
+      <div class="target ${tg.flag==='up'?'go':''}">${tg.msg}</div>
       <div class="setlog"><div class="sf"><label class="fld">Weight</label><input type="number" inputmode="decimal" class="w" placeholder="lb" value="${lastW??''}"></div><div class="sf"><label class="fld">Reps</label><input type="number" inputmode="numeric" class="r" placeholder="reps"></div><button class="btn steel sm addset">+ Log set</button></div>
       <div class="logline"></div></div></div>`);
     renderLogline(ex.id,node);
     node.querySelector('.top').onclick=()=>node.classList.toggle('open');
-    node.querySelector('.addset').onclick=()=>{const wv=node.querySelector('.w').value,rv=node.querySelector('.r').value;if(!rv){node.querySelector('.r').focus();return;}logSet(ex.id,wv,rv,node);};
+    node.querySelector('.addset').onclick=()=>{const wv=node.querySelector('.w').value,rv=node.querySelector('.r').value;if(!rv){node.querySelector('.r').focus();return;}
+      if(!(+rv>0&&+rv<1000))return bad('Reps (or seconds) must be a positive number');if(wv!==''&&!(+wv>=0&&+wv<1500))return bad('Weight looks wrong — check it');
+      logSet(ex.id,wv,rv,node);startRest(restFor(ex));};
     box.appendChild(node);});}
 const fmtSets=sets=>sets.map(s=>`${s.w||'BW'}×${s.r}`).join('  ');
+/* Which session the weekly schedule puts on each lift day (index into the GYM / TRAVEL session lists) */
+const SESSION_DAY={gym:{Mon:0,Tue:1,Thu:2,Fri:3},travel:{Mon:0,Tue:2,Thu:1,Fri:2}};
+function todaysSession(mode){const i=SESSION_DAY[mode][JS_DAY[new Date().getDay()]];return i==null?null:Object.keys(mode==='gym'?GYM:TRAVEL)[i];}
+/* "3 × 8–10" → {sets:3,lo:8,hi:10}; null for holds, carries, AMRAP and combos, which just get "beat last time" */
+function parseScheme(s){const m=/^(\d+) × (\d+)(?:–(\d+))?(?:\/leg|\/side| each)?(?: \(P\d\+?\))?$/.exec(s);return m?{sets:+m[1],lo:+m[2],hi:+(m[3]||m[2])}:null;}
+const round5=n=>Math.max(5,Math.round(n/5)*5);
+/* Today's target from the last session: the plan's own progression rule (top of the range on every set → add load) */
+function target(ex){const log=S.trainLog[ex.id]||[],t=todayStr(),prev=log.filter(x=>x.date!==t&&x.sets.length).pop(),sc=parseScheme(ex.s);
+  const need=(/\(P(\d)/.exec(ex.s)||[])[1];
+  if(need&&currentPhase()<need)return {flag:'later',msg:`<b>Not yet — this starts in Phase ${need}.</b> For now, practise soft, silent landings with a few easy pogo hops, or skip it.`};
+  if(ex.plyo)return {msg:`<b>Quality, not quantity:</b> every rep max effort with a crisp, quiet landing. Full rest; stop if landings get sloppy.${prev?` Last time: ${fmtSets(prev.sets)}.`:''}`};
+  if(!prev)return {msg:sc?`<b>First time:</b> pick a weight you can do for ${sc.hi} reps with ~2 left in the tank, then log every set. That's your baseline.`:'<b>First time:</b> log what you do today. That\'s your baseline to beat.'};
+  const topW=Math.max(...prev.sets.map(x=>x.w||0)),bw=!topW,top=prev.sets.filter(x=>(x.w||0)===topW),last=fmtSets(prev.sets);
+  if(isDeloadWeek())return {msg:`<b>Deload week:</b> ~${Math.max(1,Math.round((sc?sc.sets:prev.sets.length)*0.6))} easy sets${bw?'':` at ~${round5(topW*0.8)} lb`}, well short of failure. Last time: ${last}.`};
+  if(!sc)return {msg:`<b>Beat last time</b> (${last}) by a rep, a few seconds or a few metres.`};
+  if(top.length>=sc.sets&&top.slice(0,sc.sets).every(x=>x.r>=sc.hi))return {flag:'up',msg:bw?`<b>You hit ${sc.hi} on every set last time.</b> Make it harder: load a backpack or use the tougher variation, and aim for ${sc.lo}+.`
+    :`<b>You hit ${sc.hi} on every set at ${topW} lb.</b> Go up to the next weight (~${topW+5} lb) and aim for ${sc.lo}+ reps.`};
+  return {msg:`<b>Stay at ${bw?'bodyweight':topW+' lb'}</b> and add a rep or two until every set reaches ${sc.hi}. Last time: ${last}.`};}
+/* Rest between sets: ~2 min for heavier compounds (≤10 reps), ~90 s for isolation, plyos and holds */
+function restFor(ex){const sc=parseScheme(ex.s);return !ex.plyo&&sc&&sc.hi<=10&&sc.hi>5?120:90;}
 function renderLogline(id,node){const log=S.trainLog[id]||[];const t=todayStr();const e=log.find(x=>x.date===t);const prev=log.filter(x=>x.date!==t&&x.sets.length).pop();
   const box=node.querySelector('.logline');
   box.innerHTML=(e&&e.sets.length?`Today: <b>${fmtSets(e.sets)}</b><button class="undo">undo last</button>`:'')+
@@ -833,14 +933,15 @@ function pgRecovery(){const last=S.sleepLog.length?S.sleepLog[S.sleepLog.length-
     <div class="card"><div class="ch"><h3>Sleep — the #1 supplement</h3><span class="pill e">${SLEEP.needHrs} hrs</span></div><ul class="tip-list">${SLEEP.points.map(p=>`<li><b>${p.t}.</b> ${p.d}</li>`).join('')}</ul></div>
     <div><div class="card"><div class="ch"><h3>Log last night</h3></div>
         <div style="display:flex;gap:10px;align-items:flex-end"><div style="flex:1"><label class="fld">Hours slept</label><input type="number" inputmode="decimal" id="sleepin" step="0.25" placeholder="${last||'8.5'}"></div><button class="btn" id="sleeplog">Log</button></div>
-        <div id="sleepstat" style="margin-top:14px"></div><div id="sleepchart" style="margin-top:8px"></div></div>
+        <div id="sleepstat" style="margin-top:14px"></div><div id="sleepchart" style="margin-top:8px"></div>
+        ${recentList('sleepLog','Recent nights',x=>`${x.h} hrs`)}</div>
       <div class="card" style="margin-top:16px"><div class="ch"><h3>Recovery rules</h3></div><ul class="tip-list">${SLEEP.recovery.map(p=>`<li><b>${p.t}.</b> ${p.d}</li>`).join('')}</ul></div></div>
   </div>
   <div class="note warn" style="margin-top:16px"><b>The deload is not optional.</b> Every 6–8 weeks, take one week at ~60% sets and ~80% load. It feels like going backward; it's actually how you take three steps forward. Your joints and nervous system bank the recovery, and you come back stronger — this is also prime injury prevention.</div>
 </div>`;}
 function renderSleep(){const last=S.sleepLog.slice(-7);const avg=last.length?(last.reduce((a,x)=>a+x.h,0)/last.length):0;const st=$('#sleepstat');
   if(st)st.innerHTML=`<div class="stat"><div class="lab">7-day average</div><div class="num">${avg?avg.toFixed(1):'—'}<small> hrs</small></div><div class="delta ${avg>=8.5?'up':'dn'}">${avg?(avg>=8.5?'on target ✓':'below target — bank more'):'log a few nights'}</div></div>`;
-  drawLine('#sleepchart',S.sleepLog.map(x=>x.h),{unit:'h',goal:9});}
+  drawLine('#sleepchart',S.sleepLog.map(x=>x.h),{unit:'h',goal:9,dates:S.sleepLog.map(x=>x.date)});}
 
 /* ---------------- NUTRITION ---------------- */
 function pgNutrition(){const m=macros(),w=curWeight();return `<div class="page on" id="p-nutrition">
@@ -849,10 +950,11 @@ function pgNutrition(){const m=macros(),w=curWeight();return `<div class="page o
   <p class="lead">A 6'2"+ hard-gainer's #1 failure point is <b>under-eating without realising it</b> — big frame, fast metabolism, easily full. The fix is calorie <i>density</i> and consistency. Targets recalculate from your logged bodyweight automatically.</p>
   <div class="grid g4" style="margin:22px 0 16px">
     <div class="stat"><div class="lab">Maintenance (TDEE)</div><div class="num">${fmt(m.tdee)}<small> kcal</small></div><div class="delta">est. from ${w} lb</div></div>
-    <div class="stat" style="border-color:var(--ember)"><div class="lab" style="color:var(--ember)">Eat / day</div><div class="num">${fmt(m.cal)}<small> kcal</small></div><div class="delta up">▲ lean-bulk surplus</div></div>
+    <div class="stat" style="border-color:var(--ember)"><div class="lab" style="color:var(--ember)">Eat / day</div><div class="num">${fmt(m.cal)}<small> kcal</small></div><div class="delta up">▲ lean-bulk surplus${S.profile.calAdj?` (${S.profile.calAdj>0?'+':''}${S.profile.calAdj} adj.)`:''}</div></div>
     <div class="stat"><div class="lab">Protein</div><div class="num">${m.protein}<small> g</small></div><div class="delta">≈ 1 g/lb · ${fmt(m.protein*4)} kcal</div></div>
     <div class="stat"><div class="lab">Carbs / Fat</div><div class="num">${m.carbs}<small>/${m.fat}g</small></div><div class="delta">fuel + hormones</div></div>
   </div>
+  ${coachNote('margin:0 0 16px')}
   <div class="grid g2">
     <div class="card"><div class="ch"><h3>The protein game</h3><span class="pill s">${m.protein} g/day</span></div>
       <p class="sec-intro">Hit <b>~1 g per lb of bodyweight</b>, spread over 4–5 feeds of 30–50 g (each crossing the ~3 g leucine 'switch' that triggers muscle building). <b>Whole food first</b> — powder is just convenience to top up.</p>
@@ -864,7 +966,7 @@ function pgNutrition(){const m=macros(),w=curWeight();return `<div class="page o
   </div>
   <div class="card" style="margin-top:16px"><div class="ch"><h3>Why these numbers</h3></div>
     <table><tbody>
-      <tr><td><b>Calories = TDEE + ~420</b></td><td>A modest surplus keeps gains lean. You can't force muscle faster by eating more — you just add fat. Steer by the scale, not the math.</td></tr>
+      <tr><td><b>Calories = TDEE + ~420</b>${S.profile.calAdj?` ${S.profile.calAdj>0?'+':'−'} ${Math.abs(S.profile.calAdj)} adjustment`:''}</td><td>A modest surplus keeps gains lean. You can't force muscle faster by eating more — you just add fat. Steer by the scale, not the math.</td></tr>
       <tr><td><b>Protein 1 g/lb</b></td><td>Maximises muscle protein synthesis with margin for a hard-gainer. The single most important macro for building.</td></tr>
       <tr><td><b>Fat 0.45 g/lb</b></td><td>Protects testosterone, hormones and joints. Don't drop lower chasing carbs.</td></tr>
       <tr><td><b>Carbs (the rest)</b></td><td>Your training fuel and easiest calorie lever. Hard-gainers thrive on high carbs — rice, oats, potatoes, fruit, bread.</td></tr>
@@ -879,6 +981,7 @@ function pgNutrition(){const m=macros(),w=curWeight();return `<div class="page o
       <div style="width:60px"><label class="fld">C</label><input type="number" inputmode="decimal" id="fc" placeholder="g"></div>
       <div style="width:60px"><label class="fld">F</label><input type="number" inputmode="decimal" id="ff" placeholder="g"></div>
       <button class="btn" id="addfood">Add</button></div>
+    <div id="quickfood" style="margin:-4px 0 12px"></div>
     <div id="dayrings" class="grid g4" style="margin-bottom:14px"></div><div id="foodlog"></div></div>
 </div>`;}
 function renderSupps(){const box=$('#supplist');if(!box)return;box.innerHTML=SUPPS.map(s=>{const c=s.tier==='core'?'var(--ember)':s.tier==='useful'?'var(--steel)':'var(--faint)';
@@ -887,9 +990,17 @@ function renderSupps(){const box=$('#supplist');if(!box)return;box.innerHTML=SUP
   const n=el(`<div class="note">Supplements are <b>unregulated</b> — buy third-party tested brands (look for NSF or Informed Sport), and check with a doctor before starting anything if you take medication or have a health condition. None of this is medical advice.</div>`);box.appendChild(n);}
 function renderNutritionDay(){const t=todayStr();const log=S.nutritionLog[t]||[];const sum=log.reduce((a,x)=>({cal:a.cal+(x.cal||0),p:a.p+(x.p||0),c:a.c+(x.c||0),f:a.f+(x.f||0)}),{cal:0,p:0,c:0,f:0});const m=macros();
   const rings=$('#dayrings');if(rings)rings.innerHTML=[['Calories',sum.cal,m.cal,'kcal'],['Protein',sum.p,m.protein,'g'],['Carbs',sum.c,m.carbs,'g'],['Fat',sum.f,m.fat,'g']].map(([l,v,g,u])=>{const p=Math.min(100,v/g*100||0);return `<div class="stat"><div class="lab">${l}</div><div class="num" style="font-size:24px">${fmt(v)}<small>/${fmt(g)}${u}</small></div><div class="bar" style="margin-top:8px"><i style="width:${p}%"></i></div></div>`;}).join('');
+  const qf=$('#quickfood');qfCache=recentFoods();if(qf)qf.innerHTML=qfCache.length?`<div class="eyebrow" style="margin-bottom:6px">Tap to add again</div>`+qfCache.map((x,i)=>`<button class="chipbtn" onclick="quickFood(${i})">+ <b>${esc(x.name)}</b> · ${x.cal||0}</button>`).join(''):'';
   const tag=$('#kcaltag');if(tag)tag.textContent=`${fmt(sum.cal)} / ${fmt(m.cal)} kcal · ${fmt(Math.max(0,m.cal-sum.cal))} to go`;
   const fl=$('#foodlog');if(fl)fl.innerHTML=log.length?log.map((x,i)=>`<div class="chk" style="cursor:default"><div class="ct"><div class="t">${esc(x.name)}</div><div class="d mono">${x.cal||0} kcal · ${x.p||0}P ${x.c||0}C ${x.f||0}F</div></div><button class="btn ghost sm" onclick="delFood(${i})">✕</button></div>`).join(''):`<div class="note">Nothing logged yet today. Add your first meal above — rough numbers beat guessing.</div>`;}
 function delFood(i){const t=todayStr();(S.nutritionLog[t]||[]).splice(i,1);renderNutritionDay();persist();}
+function addFood(x){const t=todayStr();if(!S.nutritionLog[t])S.nutritionLog[t]=[];S.nutritionLog[t].push(x);renderNutritionDay();persist();}
+/* Your 8 most recent distinct meals, newest first: most days are the same few meals and shakes */
+let qfCache=[];
+function recentFoods(){const seen=new Set(),out=[];Object.keys(S.nutritionLog).sort().reverse().forEach(d=>(S.nutritionLog[d]||[]).slice().reverse().forEach(x=>{
+  const k=String(x.name).trim().toLowerCase();if(x.name&&k!=='meal'&&!seen.has(k)&&out.length<8){seen.add(k);out.push(x);}}));return out;}
+function quickFood(i){const x=qfCache[i];if(x)addFood({name:x.name,cal:x.cal||0,p:x.p||0,c:x.c||0,f:x.f||0});}
+window.quickFood=quickFood;
 
 /* ---------------- TIMELINE ---------------- */
 function pgTimeline(){return `<div class="page on" id="p-timeline">
@@ -921,9 +1032,12 @@ function pgMetrics(){const p=S.profile;return `<div class="page on" id="p-metric
   <div class="grid g2" style="margin:22px 0 16px">
     <div class="card"><div class="ch"><h3>Bodyweight</h3><span class="pill">weekly</span></div>
       <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px"><div style="flex:1"><label class="fld">Weight (lb)</label><input type="number" inputmode="decimal" id="wlog" step="0.1" placeholder="${curWeight()}"></div><button class="btn" id="wlogbtn">Log</button></div>
-      <div id="wchart"></div></div>
+      <div id="wchart"></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">7-day average <b style="color:var(--ink)">${curWeight()} lb</b>${lastWeighIn()?` · last weigh-in ${lastWeighIn().w} lb on ${esc(lastWeighIn().date)}`:''}. Phase and calorie targets follow the average, not one day.</div>
+      ${recentList('weightLog','Recent weigh-ins',x=>`${x.w} lb`)}</div>
     <div class="card"><div class="ch"><h3>Plan settings</h3></div>
-      <div class="grid g2"><div><label class="fld">Start weight (lb)</label><input type="number" inputmode="decimal" id="setStart" value="${p.startWeight}"></div><div><label class="fld">Goal weight (lb)</label><input type="number" inputmode="decimal" id="setGoal" value="${p.goalWeight}"></div><div><label class="fld">Height (inches)</label><input type="number" inputmode="decimal" id="setH" value="${p.heightIn}"></div><div><label class="fld">Age</label><input type="number" inputmode="decimal" id="setAge" value="${p.age}"></div><div style="grid-column:1/-1"><label class="fld">Activity (1.4 sedentary → 1.8 very active)</label><input type="number" inputmode="decimal" id="setAct" step="0.05" value="${p.activity}"></div></div>
+      <div class="grid g2"><div><label class="fld">Start weight (lb)</label><input type="number" inputmode="decimal" id="setStart" value="${p.startWeight}"></div><div><label class="fld">Goal weight (lb)</label><input type="number" inputmode="decimal" id="setGoal" value="${p.goalWeight}"></div><div><label class="fld">Height (inches)</label><input type="number" inputmode="decimal" id="setH" value="${p.heightIn}"></div><div><label class="fld">Age</label><input type="number" inputmode="decimal" id="setAge" value="${p.age}"></div><div style="grid-column:1/-1"><label class="fld">Activity (1.4 sedentary → 1.8 very active)</label><input type="number" inputmode="decimal" id="setAct" step="0.05" value="${p.activity}"></div><div><label class="fld">Calorie adjust (kcal/day)</label><input type="number" inputmode="numeric" id="setAdj" step="50" value="${p.calAdj||0}"></div><div><label class="fld">Plan start date</label><input type="date" id="setDate" value="${esc(p.startDate||'')}" max="${todayStr()}"></div></div>
+      <div style="font-size:11.5px;color:var(--faint);margin-top:8px">Calorie adjust is added to the formula; the rate-of-gain tip can set it for you. Plan start sets the week count and when deload weeks fall (every ${DELOAD_EVERY}th week). You're in ${weekLine()}.</div>
       <button class="btn steel" id="savesettings" style="margin-top:14px">Save settings</button></div>
   </div>
   <div class="card"><div class="ch"><h3>Body measurements</h3><span class="pill e">every 4 weeks · V-taper scoreboard</span></div>
@@ -945,10 +1059,10 @@ function pgMetrics(){const p=S.profile;return `<div class="page on" id="p-metric
     </div>
     <div class="note" id="backupnote">${S.lastBackup?`Last backup: <b>${backupAge()}</b>.`:'No backup saved yet.'}</div></div>
 </div>`;}
-function renderMetrics(){drawLine('#wchart',S.weightLog.map(x=>x.w),{unit:'lb',goal:S.profile.goalWeight,start:S.profile.startWeight});const mt=$('#mtable');if(!mt)return;
+function renderMetrics(){drawLine('#wchart',S.weightLog.map(x=>x.w),{unit:'lb',goal:S.profile.goalWeight,start:S.profile.startWeight,dates:S.weightLog.map(x=>x.date)});const mt=$('#mtable');if(!mt)return;
   if(!S.measure.length){mt.innerHTML=`<div class="note">No measurements yet (inches). The key ratio to watch is <b>shoulders ÷ waist</b> — as that climbs, your V-taper is winning even if the scale crawls. Also track <b>forearm</b>: it's your grip-size proxy.</div>`;return;}
-  const rows=S.measure.slice().reverse().map(m=>{const ratio=m.waist?(m.shoulders/m.waist).toFixed(2):'—';return `<tr><td class="mono">${m.date}</td><td class="mono">${m.shoulders||'—'}</td><td class="mono">${m.chest||'—'}</td><td class="mono">${m.waist||'—'}</td><td class="mono">${m.arm||'—'}</td><td class="mono">${m.forearm||'—'}</td><td class="mono">${m.thigh||'—'}</td><td class="mono" style="color:var(--ember)">${ratio}</td></tr>`;}).join('');
-  mt.innerHTML=`<table><thead><tr><th>Date</th><th>Shldr</th><th>Chest</th><th>Waist</th><th>Arm</th><th>F.arm</th><th>Thigh</th><th>S÷W</th></tr></thead><tbody>${rows}</tbody></table>`;}
+  const rows=S.measure.map((m,i)=>[m,i]).reverse().map(([m,i])=>{const ratio=m.waist&&m.shoulders?(m.shoulders/m.waist).toFixed(2):'—';return `<tr><td class="mono">${esc(m.date)}</td><td class="mono">${m.shoulders||'—'}</td><td class="mono">${m.chest||'—'}</td><td class="mono">${m.waist||'—'}</td><td class="mono">${m.arm||'—'}</td><td class="mono">${m.forearm||'—'}</td><td class="mono">${m.thigh||'—'}</td><td class="mono" style="color:var(--ember)">${ratio}</td><td><button class="del" onclick="delEntry('measure',${i})" aria-label="Delete ${esc(m.date)} measurements">✕</button></td></tr>`;}).join('');
+  mt.innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>Date</th><th>Shldr</th><th>Chest</th><th>Waist</th><th>Arm</th><th>F.arm</th><th>Thigh</th><th>S÷W</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><div style="font-size:11.5px;color:var(--faint);margin-top:8px">Inches. Logging again on the same day fills in or corrects that day's row.</div>`;}
 
 /* ---------------- PRINT MASTER SHEET ---------------- */
 function pgPrint(){const m=macros();
@@ -1044,7 +1158,8 @@ function renderDaily(){
       <div class="ind"><div class="il">Lifts this week</div><div class="iv">${lifts}<small> / 4</small></div><div class="bar" style="margin-top:7px"><i style="width:${Math.min(100,lifts/4*100)}%"></i></div><div class="ix">${lifts>=4?'week complete ✓':'mark it done below or log sets'}</div></div>
     </div>`;
   body.innerHTML=strip+`
-    <div class="day-hero"><div class="dnum" style="color:${accent}">${dailyDay}</div><div><h2 style="font-size:24px">${d.title}</h2><div class="dmiss">${d.mission}</div></div></div>
+    <div class="day-hero"><div class="dnum" style="color:${accent}">${dailyDay}</div><div><h2 style="font-size:24px">${d.title}</h2><div class="dmiss">${d.mission}</div><div class="mono" style="font-size:11.5px;color:var(--faint);margin-top:4px">${weekLine()}</div></div></div>
+    ${!isRest?deloadNote():''}
     <div class="grid g2">
       <div class="card"><div class="ch"><h3>${isRest?'Today':'Workout'}</h3><span class="pill ${dailyMode==='gym'?'e':'s'}">${dailyMode==='gym'?'gym':'no gym'}</span></div>
         ${moves.map(x=>`<div class="simple-move"><div class="smn">${x[0]}</div><div class="smt">${x[1]}</div></div>`).join('')}
@@ -1068,7 +1183,7 @@ function renderDaily(){
       <div class="card"><div class="ch"><h3>Recover</h3><span class="pill s">nightly</span></div>
         <div class="simple-move"><div class="smn">Sleep</div><div class="smt">${SLEEP.needHrs} hrs</div></div>
         <div class="simple-move"><div class="smn">Same bed/wake time</div><div class="smt">±30 min</div></div>
-        <div class="simple-move"><div class="smn">Deload week</div><div class="smt">every ~7 wks</div></div>
+        <div class="simple-move"><div class="smn">Deload week</div><div class="smt">every ${DELOAD_EVERY} wks</div></div>
         <p style="font-size:12px;color:var(--muted);margin:12px 0 0">One full rest day a week (Sunday). Ease off, don't stop moving.</p></div>
       <div class="card"><div class="ch"><h3>Aim & progress</h3><span class="pill">the goal</span></div>
         <div class="simple-move"><div class="smn">Goal weight</div><div class="smt">${S.profile.goalWeight} lb</div></div>
@@ -1081,16 +1196,19 @@ function renderDaily(){
 }
 
 /* ---------------- SVG LINE CHART ---------------- */
+const shortDate=ds=>{const d=parseYmd(ds);return isNaN(d)?esc(ds):d.toLocaleDateString(undefined,{month:'short',day:'numeric'});};
 function drawLine(sel,data,opt={}){const box=$(sel);if(!box)return;const W=440,H=200,pad=30;
   if(!data||data.length<2){box.innerHTML=`<div class="note" style="margin:0">Log at least 2 entries to see your trend line.</div>`;return;}
   let vals=data.slice(),min=Math.min(...vals),max=Math.max(...vals);
   if(opt.goal!=null){min=Math.min(min,opt.goal);max=Math.max(max,opt.goal);}if(opt.start!=null){min=Math.min(min,opt.start);max=Math.max(max,opt.start);}
   if(min===max){min-=1;max+=1;}const range=max-min;
-  const x=i=>pad+i*((W-pad*2)/(vals.length-1));const y=v=>opt.invert?pad+((v-min)/range)*(H-pad*2):H-pad-((v-min)/range)*(H-pad*2);
+  const ds=opt.dates&&opt.dates.length===vals.length?opt.dates:null,span=ds?daysBetween(ds[0],ds[ds.length-1]):0;
+  /* space points by date when we have them, so a gap in logging looks like a gap */
+  const x=i=>pad+(span>0?daysBetween(ds[0],ds[i])/span:i/(vals.length-1))*(W-pad*2);const y=v=>opt.invert?pad+((v-min)/range)*(H-pad*2):H-pad-((v-min)/range)*(H-pad*2);
   const path=vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
   let goalLn='';if(opt.goal!=null){const gy=y(opt.goal).toFixed(1);goalLn=`<path class="goal" d="M${pad} ${gy} L${W-pad} ${gy}"/><text x="${W-pad}" y="${(+gy)-5}" text-anchor="end">goal ${opt.goal}</text>`;}
   const dots=vals.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${i===vals.length-1?3.5:2.2}"/>`).join('');
-  box.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"><line class="grid" x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}"/>${goalLn}<path class="ln" d="${path}"/>${dots}<text x="${pad}" y="${H-8}">${vals.length} logs</text><text x="${W-pad}" y="${H-8}" text-anchor="end" style="fill:var(--ember)">${vals[vals.length-1]}${opt.unit||''}</text><text x="${pad-4}" y="${y(max)+3}" text-anchor="end">${max.toFixed(0)}</text><text x="${pad-4}" y="${y(min)+3}" text-anchor="end">${min.toFixed(0)}</text></svg>`;}
+  box.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet"><line class="grid" x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}"/>${goalLn}<path class="ln" d="${path}"/>${dots}<text x="${pad}" y="${H-8}">${ds?`${shortDate(ds[0])} → ${shortDate(ds[ds.length-1])} · `:''}${vals.length} logs</text><text x="${W-pad}" y="${H-8}" text-anchor="end" style="fill:var(--ember)">${vals[vals.length-1]}${opt.unit||''}</text><text x="${pad-4}" y="${y(max)+3}" text-anchor="end">${max.toFixed(0)}</text><text x="${pad-4}" y="${y(min)+3}" text-anchor="end">${min.toFixed(0)}</text></svg>`;}
 
 /* ============================================================
    ROUTER + WIRING
@@ -1125,14 +1243,28 @@ function toggleDailyDone(){const t=todayStr();if(S.dailyDone[t])delete S.dailyDo
 function toggleQuickMob(){const t=todayStr();if(hasMob(t)){delete S.quickMob[t];S.mobilityDone[t]=[];}else S.quickMob[t]=true;renderDaily();persist();}
 window.toggleDailyDone=toggleDailyDone;window.toggleQuickMob=toggleQuickMob;
 function wireDaily(){renderDaily();document.querySelectorAll('#dmodeseg button').forEach(b=>{b.onclick=()=>{dailyMode=b.dataset.m;saveUI('dailyMode',dailyMode);document.querySelectorAll('#dmodeseg button').forEach(x=>x.classList.toggle('on',x===b));renderDaily();};});}
-function wireMobility(){renderMobList();renderToe();$('#mobreset').onclick=()=>{S.mobilityDone[todayStr()]=[];delete S.quickMob[todayStr()];renderMobList();persist();};$('#ttlog').onclick=()=>{const v=$('#ttinput').value;if(v===''){$('#ttinput').focus();return;}S.toeTouch.push({date:todayStr(),gap:Number(v)});$('#ttinput').value='';renderToe();persist();};}
-function wireTrain(){document.querySelectorAll('#modeseg button').forEach(b=>{b.onclick=()=>{trainMode=b.dataset.mode;trainDay=null;saveUI('trainMode',trainMode);document.querySelectorAll('#modeseg button').forEach(x=>x.classList.toggle('on',x===b));renderDaySeg();renderExos();};});renderDaySeg();renderExos();}
-function wireRecovery(){renderSleep();$('#sleeplog').onclick=()=>{const v=Number($('#sleepin').value);if(!v){$('#sleepin').focus();return;}S.sleepLog.push({date:todayStr(),h:v});$('#sleepin').value='';renderSleep();persist();};}
-function wireNutrition(){renderSupps();renderNutritionDay();$('#addfood').onclick=()=>{const name=$('#fname').value.trim()||'Meal';const cal=Number($('#fcal').value)||0,p=Number($('#fp').value)||0,c=Number($('#fc').value)||0,f=Number($('#ff').value)||0;if(!cal&&!p&&!c&&!f){$('#fcal').focus();return;}const t=todayStr();if(!S.nutritionLog[t])S.nutritionLog[t]=[];S.nutritionLog[t].push({name,cal,p,c,f});['#fname','#fcal','#fp','#fc','#ff'].forEach(s=>$(s).value='');renderNutritionDay();persist();};}
+function wireMobility(){renderMobList();renderToe();$('#mobreset').onclick=()=>{S.mobilityDone[todayStr()]=[];delete S.quickMob[todayStr()];renderMobList();persist();};document.querySelectorAll('#ttside button').forEach(b=>b.onclick=()=>document.querySelectorAll('#ttside button').forEach(x=>x.classList.toggle('on',x===b)));
+  $('#ttlog').onclick=()=>{const v=$('#ttinput').value,n=Math.abs(Number(v));if(v===''){$('#ttinput').focus();return;}if(!(n<=60))return bad('Enter the distance in cm (0–60)','#ttinput');
+    const sign=Number($('#ttside button.on').dataset.s);upsertDay(S.toeTouch,{date:todayStr(),gap:n?n*sign:0});persist();render('mobility',false);};}
+function wireTrain(){const t=todayStr();if(UI.trainAuto!==t){const ts=todaysSession(trainMode);if(ts){trainDay=ts;saveUI('trainDay',ts);}saveUI('trainAuto',t);}
+  document.querySelectorAll('#modeseg button').forEach(b=>{b.onclick=()=>{trainMode=b.dataset.mode;trainDay=todaysSession(trainMode);saveUI('trainMode',trainMode);document.querySelectorAll('#modeseg button').forEach(x=>x.classList.toggle('on',x===b));renderDaySeg();renderExos();};});renderDaySeg();renderExos();}
+function wireRecovery(){renderSleep();$('#sleeplog').onclick=()=>{const v=Number($('#sleepin').value);if(!v){$('#sleepin').focus();return;}if(!(v>0&&v<=16))return bad('Enter hours slept (0–16)','#sleepin');
+  upsertDay(S.sleepLog,{date:todayStr(),h:v});persist();render('recovery',false);};}
+function wireNutrition(){renderSupps();renderNutritionDay();$('#addfood').onclick=()=>{const name=$('#fname').value.trim()||'Meal';const cal=Number($('#fcal').value)||0,p=Number($('#fp').value)||0,c=Number($('#fc').value)||0,f=Number($('#ff').value)||0;if(!cal&&!p&&!c&&!f){$('#fcal').focus();return;}
+  if([cal,p,c,f].some(v=>v<0)||cal>6000||p>500||c>1000||f>500)return bad('Those numbers look off — check them');addFood({name,cal,p,c,f});['#fname','#fcal','#fp','#fc','#ff'].forEach(s=>$(s).value='');};}
 function wireMetrics(){renderMetrics();
-  $('#wlogbtn').onclick=()=>{const v=Number($('#wlog').value);if(!v){$('#wlog').focus();return;}S.weightLog.push({date:todayStr(),w:v});$('#wlog').value='';renderMetrics();persist();updatePhaseLabels();};
-  $('#mlogbtn').onclick=()=>{const m={date:todayStr(),shoulders:+$('#mS').value||null,chest:+$('#mC').value||null,waist:+$('#mW').value||null,arm:+$('#mA').value||null,forearm:+$('#mF').value||null,thigh:+$('#mT').value||null};if(!m.shoulders&&!m.chest&&!m.waist&&!m.arm&&!m.forearm&&!m.thigh){$('#mS').focus();return;}S.measure.push(m);['#mS','#mC','#mW','#mA','#mF','#mT'].forEach(s=>$(s).value='');renderMetrics();persist();};
-  $('#savesettings').onclick=()=>{S.profile.startWeight=+$('#setStart').value||S.profile.startWeight;S.profile.goalWeight=+$('#setGoal').value||S.profile.goalWeight;S.profile.heightIn=+$('#setH').value||S.profile.heightIn;S.profile.age=+$('#setAge').value||S.profile.age;S.profile.activity=+$('#setAct').value||S.profile.activity;persist();render('metrics');};
+  $('#wlogbtn').onclick=()=>{const v=Number($('#wlog').value);if(!v){$('#wlog').focus();return;}if(!(v>=70&&v<=450))return bad('Enter your bodyweight in lb (70–450)','#wlog');
+    const ref=curWeight();if(Math.abs(v-ref)>ref*0.06&&!confirm(`${v} lb is ${Math.abs(v-ref).toFixed(1)} lb off your recent average (${ref} lb). Log it anyway?`))return;
+    upsertDay(S.weightLog,{date:todayStr(),w:v});persist();render('metrics',false);};
+  $('#mlogbtn').onclick=()=>{const m={date:todayStr(),shoulders:+$('#mS').value||null,chest:+$('#mC').value||null,waist:+$('#mW').value||null,arm:+$('#mA').value||null,forearm:+$('#mF').value||null,thigh:+$('#mT').value||null};if(!m.shoulders&&!m.chest&&!m.waist&&!m.arm&&!m.forearm&&!m.thigh){$('#mS').focus();return;}
+    if(Object.values(m).some(v=>typeof v==='number'&&!(v>=2&&v<=100)))return bad('Measurements are in inches (2–100)');
+    const same=S.measure.find(x=>x.date===m.date);if(same)Object.keys(m).forEach(k=>{if(m[k]!=null)same[k]=m[k];});else upsertDay(S.measure,m);
+    ['#mS','#mC','#mW','#mA','#mF','#mT'].forEach(s=>$(s).value='');renderMetrics();persist();};
+  $('#savesettings').onclick=()=>{const P=S.profile,n={startWeight:+$('#setStart').value||P.startWeight,goalWeight:+$('#setGoal').value||P.goalWeight,heightIn:+$('#setH').value||P.heightIn,age:+$('#setAge').value||P.age,activity:+$('#setAct').value||P.activity,calAdj:Math.round(+$('#setAdj').value)||0,startDate:$('#setDate').value||P.startDate};
+    if(!(n.goalWeight>n.startWeight))return bad('Goal weight must be above start weight','#setGoal');if(!(n.heightIn>=48&&n.heightIn<=96))return bad('Height is in inches (48–96)','#setH');
+    if(!(n.age>=13&&n.age<=99))return bad('Check your age','#setAge');if(!(n.activity>=1.2&&n.activity<=2.2))return bad('Activity should be 1.2–2.2','#setAct');
+    if(Math.abs(n.calAdj)>1500)return bad('Calorie adjust should be within ±1500','#setAdj');if(n.startDate>todayStr())return bad('Plan start can\'t be in the future','#setDate');
+    Object.assign(P,n);persist();render('metrics',false);};
   $('#exportbtn').onclick=async()=>{
     const name=`blueprint-backup-${todayStr()}.json`;
     const json=JSON.stringify(Object.assign({},S,{lastBackup:Date.now()}),null,2);
@@ -1170,6 +1302,22 @@ function wireMetrics(){renderMetrics();
     e.target.value='';
   };
 }
+
+/* Rest timer: starts when a set is logged; keeps the screen awake while it counts so the phone doesn't lock between sets */
+let restEnd=0,restTick=null,wakeLock=null;
+function startRest(sec){restEnd=Date.now()+sec*1000;$('#rest').classList.remove('done');$('#rest').classList.add('show');clearInterval(restTick);restTick=setInterval(tickRest,250);tickRest();keepAwake(true);}
+function tickRest(){const left=Math.ceil((restEnd-Date.now())/1000);
+  if(left>0){$('#resttime').textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;return;}
+  clearInterval(restTick);restTick=null;$('#resttime').textContent='Go';$('#rest').classList.add('done');keepAwake(false);
+  if(navigator.vibrate)navigator.vibrate([200,100,200]);setTimeout(()=>{if(!restTick)stopRest();},6000);}
+function stopRest(){clearInterval(restTick);restTick=null;$('#rest').classList.remove('show','done');keepAwake(false);}
+async function keepAwake(on){try{
+  if(on&&!wakeLock&&navigator.wakeLock&&document.visibilityState==='visible'){const l=await navigator.wakeLock.request('screen');if(restTick){wakeLock=l;l.addEventListener('release',()=>{if(wakeLock===l)wakeLock=null;});}else l.release();}
+  else if(!on&&wakeLock){const l=wakeLock;wakeLock=null;await l.release();}
+}catch(e){}}
+$('#restplus').onclick=()=>{if(restTick)restEnd+=30000;else startRest(30);tickRest();};
+$('#restx').onclick=stopRest;
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&restTick)keepAwake(true); });
 
 let curPage='dash', renderedDay=null;
 const sheet=$('#sheet');
