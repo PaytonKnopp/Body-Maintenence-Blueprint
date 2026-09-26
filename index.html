@@ -395,16 +395,18 @@ const byDate=(a,b)=>String(a.date)<String(b.date)?-1:String(a.date)>String(b.dat
 /* One entry per calendar day: logging again the same day replaces it, so re-entering fixes a typo instead of adding a second point */
 function upsertDay(arr,entry){const i=arr.findIndex(x=>x.date===entry.date);if(i>=0)arr[i]=entry;else{arr.push(entry);arr.sort(byDate);}}
 const DEFAULTS={
-  profile:{startWeight:167,goalWeight:195,heightIn:74,age:22,activity:1.6,calAdj:0,startDate:null},
+  profile:{startWeight:167,goalWeight:195,heightIn:74,age:22,ageAsOf:null,activity:1.6,calAdj:0,startDate:null},
   weightLog:[{date:todayStr(),w:167}],
   measure:[], toeTouch:[], mobilityDone:{}, trainLog:{}, benchmarks:{1:[],2:[],3:[]},
-  nutritionLog:{}, sleepLog:[], custom:{}, dailyDone:{}, quickMob:{}, lastBackup:null, lastCalAdj:null
+  nutritionLog:{}, sleepLog:[], custom:{}, dailyDone:{}, quickMob:{}, lastBackup:null, lastCalAdj:null,
+  phaseAt:null, goalAt:null   /* derived by updateProgress(); stored so phase/goal don't flicker around a threshold */
 };
-let S=null, saveTimer=null;
+let S=null, saveTimer=null, saveMsg=null;
 function flush(){ if(saveTimer===null)return true; clearTimeout(saveTimer); saveTimer=null; return store.set(KEY,JSON.stringify(S)); }
-function persist(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ saveTimer=null; const ok=store.set(KEY,JSON.stringify(S)); ok?toast():toast('✕ Not saved — storage is full or blocked',true); },350); }
+/* Every change goes through here, so the derived phase/goal state is refreshed before each save. msg replaces "✓ Saved" (e.g. a new PR). */
+function persist(msg){ updateProgress(); clearTimeout(saveTimer); if(msg)saveMsg=msg; saveTimer=setTimeout(()=>{ saveTimer=null; const ok=store.set(KEY,JSON.stringify(S)); ok?toast(saveMsg||undefined):toast('✕ Not saved — storage is full or blocked',true); saveMsg=null; },350); }
 let toastTimer=null;
-function toast(msg='✓ Saved',err=false){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.toggle('err',err); t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),err?3200:1100); }
+function toast(msg='✓ Saved',err=false){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.toggle('err',err); t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),err?3200:msg==='✓ Saved'?1100:2600); }
 /* iOS can freeze a home-screen app the moment it's swiped away — write pending changes immediately */
 addEventListener('pagehide',flush);
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden')flush(); });
@@ -421,6 +423,7 @@ function normalize(data){
   ['weightLog','measure','toeTouch','sleepLog'].forEach(k=>out[k].sort(byDate));
   out.profile.calAdj=Number(out.profile.calAdj)||0;
   if(!out.profile.startDate)out.profile.startDate=out.weightLog[0].date;   /* week counter + deload cadence count from here */
+  if(!out.profile.ageAsOf)out.profile.ageAsOf=todayStr();                  /* age counts up by itself from here */
   return out;
 }
 /* UI preferences (last tab, gym/no-gym) — per device, not part of backups */
@@ -458,9 +461,9 @@ const TOE_MILES=[
    ============================================================ */
 const GYM={
   "Upper A — Width & Press":[
-    {id:"g_ohp",nm:"Seated DB Shoulder Press",s:"3 × 8–10",why:"Front + lateral delt mass and overhead strength for spiking and rebounding. Seated DBs keep load off your low back vs a standing barbell press.",cues:["Slight bench incline","Don't fully flare elbows","Stop an inch short of lockout"],alt:"Pike push-ups, or backpack standing press"},
+    {id:"g_ohp",main:true,nm:"Seated DB Shoulder Press",s:"3 × 8–10",why:"Front + lateral delt mass and overhead strength for spiking and rebounding. Seated DBs keep load off your low back vs a standing barbell press.",cues:["Slight bench incline","Don't fully flare elbows","Stop an inch short of lockout"],alt:"Pike push-ups, or backpack standing press"},
     {id:"g_lat1",nm:"DB Lateral Raise",s:"4 × 12–15",why:"Your #1 WIDTH exercise. The lateral delt builds the 3D shoulder and the V-taper illusion. High volume, light, strict.",cues:["Lead with the elbow","Slight 'pour the jug' tilt","Slow negative, no swing"],alt:"Backpack/water-jug lateral raise"},
-    {id:"g_row1",nm:"Chest-Supported DB Row",s:"4 × 10–12",why:"Back THICKNESS (mid-traps, rhomboids) with the chest pad absorbing all spinal load — zero risk to your back. Your most important row.",cues:["Drive elbows toward hips","1s squeeze at top","Full stretch at bottom"],alt:"Inverted row under a table, or backpack row"},
+    {id:"g_row1",main:true,nm:"Chest-Supported DB Row",s:"4 × 10–12",why:"Back THICKNESS (mid-traps, rhomboids) with the chest pad absorbing all spinal load — zero risk to your back. Your most important row.",cues:["Drive elbows toward hips","1s squeeze at top","Full stretch at bottom"],alt:"Inverted row under a table, or backpack row"},
     {id:"g_inc",nm:"Incline DB Press",s:"3 × 8–10",why:"Upper chest + front delt. The DB path lets the shoulders move naturally — the joint-friendly horizontal pressing you need.",cues:["~30° bench","Elbows ~45°","Control the stretch"],alt:"Decline/feet-elevated push-ups"},
     {id:"g_pull1",nm:"Wide-Grip Lat Pulldown",s:"3 × 10–12",why:"Direct lat WIDTH and your pull-up progression. Wide grip biases the upper-outer lat that flares the taper.",cues:["Pull to collarbone","Drive elbows down & back","No leaning back"],alt:"Pull-ups (bar, branch, door frame)"},
     {id:"g_lat2",nm:"Cable Lateral Raise",s:"3 × 15",why:"Constant tension through the whole range — cables load the bottom where DBs go light. Width finisher.",cues:["Cable behind the back","One arm at a time","Burn over weight"],alt:"Lean-away band lateral raise"},
@@ -479,7 +482,7 @@ const GYM={
     {id:"g_pu",nm:"Pull-Up / Assisted Pull-Up",s:"3 × AMRAP",why:"King of back width + grip + overhead pulling for 'farm' tasks. Band/machine assist until bodyweight reps come.",cues:["Full dead hang start","Chest to bar","Control the descent"],alt:"Doorway/towel rows or inverted rows"},
     {id:"g_lat3",nm:"Machine / Cable Lateral Raise",s:"4 × 15",why:"Second weekly lateral-delt hit from a new angle. Width is won through frequency — delts recover fast and love volume.",cues:["Smooth tempo","Pause at the top","Match both sides"],alt:"Backpack lateral raise"},
     {id:"g_seal",nm:"Seal Row / Chest-Supported Row",s:"4 × 10",why:"Pure mid-back thickness, torso fully supported — removes momentum AND spinal load. Hits traps/rhomboids clean.",cues:["Elbows wide for upper back","Pause at the chest","No hip drive"],alt:"Inverted row, feet elevated"},
-    {id:"g_flat",nm:"Flat DB Press",s:"3 × 8–10",why:"Your main horizontal press — dumbbells only, as you specified. Bigger stretch and a shoulder-friendly path vs a barbell.",cues:["Wrists stacked over elbows","Lower to chest line","Don't slam the bottom"],alt:"Standard / archer push-ups"},
+    {id:"g_flat",main:true,nm:"Flat DB Press",s:"3 × 8–10",why:"Your main horizontal press — dumbbells only, as you specified. Bigger stretch and a shoulder-friendly path vs a barbell.",cues:["Wrists stacked over elbows","Lower to chest line","Don't slam the bottom"],alt:"Standard / archer push-ups"},
     {id:"g_sap",nm:"Straight-Arm Pulldown",s:"3 × 12–15",why:"Isolates the lats in their lengthened range and teaches you to FEEL the lat — pure width work most people skip.",cues:["Stiff arms","Slight hinge","Squeeze lats, not triceps"],alt:"Band straight-arm pulldown"},
     {id:"g_shrug",nm:"DB Shrug / Trap-Bar Shrug",s:"3 × 12–15",why:"Upper-TRAP thickness — the muscle that frames the neck and screams strength. Also stabilises the shoulder under carries.",cues:["Straight up, don't roll","2s hold at top","Heavy is fine here"],alt:"Backpack shrugs / loaded carry holds"},
     {id:"g_grip",nm:"Dead Hang + Plate Pinch",s:"3 × max hold",why:"Direct GRIP and forearm work — grip is the bottleneck for everything 'functional': carrying, hauling, holding a bat. Crushing grip also boosts whole-body force output.",cues:["Hang full, shoulders active","Pinch plates smooth-side out","Time every set, beat it"],alt:"Towel dead hang / backpack-handle pinch carry"}
@@ -488,7 +491,7 @@ const GYM={
     {id:"g_dj",plyo:true,nm:"Depth Jump / Broad Jump",s:"4 × 3 (P3)",why:"Reactive POWER for max vert — the stretch-shortening cycle that makes you spring off the floor. Advanced; add only in Phase 3 once landings are clean. Full rest between reps.",cues:["Minimal ground contact","Stick the landing","Stop if form degrades"],alt:"Broad jumps / bounding on grass"},
     {id:"g_bss",nm:"Bulgarian Split Squat",s:"3 × 8–10/leg",why:"Single-leg strength fixes side-to-side imbalances (injury insurance) and loads legs hard with DBs — no spinal bar needed.",cues:["Rear foot elevated","Roughly vertical front shin","Slow down, drive up"],alt:"Backpack Bulgarian split squat"},
     {id:"g_ht",nm:"DB Hip Thrust",s:"3 × 10–12",why:"Glute strength = the engine of jumping, sprinting and hauling, plus a huge back-pain protector. Trains hip extension with zero spinal load.",cues:["Chin tucked","Full lockout squeeze","Ribs down"],alt:"Single-leg hip thrust off a couch"},
-    {id:"g_tb",nm:"Trap-Bar Deadlift (progression goal)",s:"3 × 6–8",why:"Your safe road back to heavy pulling — neutral handles + centred load keep the bar in line with your spine, far kinder than a conventional deadlift. Build TOTAL-body & grip strength. Add only once the hinge is pain-free (Phase 2+).",cues:["Push the floor away","Neutral spine","Light & perfect first"],alt:"Heavy backpack/DB RDL or kettlebell deadlift"},
+    {id:"g_tb",main:true,nm:"Trap-Bar Deadlift (progression goal)",s:"3 × 6–8",why:"Your safe road back to heavy pulling — neutral handles + centred load keep the bar in line with your spine, far kinder than a conventional deadlift. Build TOTAL-body & grip strength. Add only once the hinge is pain-free (Phase 2+).",cues:["Push the floor away","Neutral spine","Light & perfect first"],alt:"Heavy backpack/DB RDL or kettlebell deadlift"},
     {id:"g_farm",nm:"Farmer's Carry",s:"4 × 30–40m heavy",why:"THE functional-strength move: grip, traps, core and total-body bracing in one. Directly transfers to hauling and carrying anything.",cues:["Stand tall, ribs down","Crush the handles","Short, fast steps"],alt:"Heavy backpack + water-jug carry"},
     {id:"g_calf2",nm:"Seated Calf Raise",s:"3 × 15",why:"Hits the soleus the standing version misses. Complete calves round out the legs and lock down ankle stability for landings.",cues:["Deep stretch","Pause bottom & top","Full reps only"],alt:"Bent-knee single-leg calf raise"},
     {id:"g_core",nm:"Hanging Leg Raise + Pallof Press",s:"3 × 10 / 10/side",why:"Anti-extension + anti-rotation CORE — the kind that protects the spine and transfers force in rotational sports (bat, spike, shot).",cues:["No swinging on raises","Resist rotation on Pallof","Brace, breathe"],alt:"Hollow-body hold + band/towel Pallof"}
@@ -514,7 +517,7 @@ const TRAVEL={
     {id:"t_hang",nm:"Dead Hang",s:"3 × max",why:"Pure GRIP + a passive decompression for the spine. Grip strength caps everything functional, so train it daily if you can.",cues:["Full hang, shoulders active","Time it, beat it","Towel for extra challenge"],alt:"Backpack-strap pinch hold"}
   ],
   "Legs, Power & Core":[
-    {id:"t_jump",plyo:true,nm:"Broad / Tuck Jumps",s:"4 × 3–5",why:"VERT and explosiveness, no equipment. Train fast force fresh, before the grind. Land soft on grass when possible.",cues:["Max effort each rep","Stick the landing","Full rest between sets"],alt:"Pogo hops for ankle stiffness"},
+    {id:"t_jump",plyo:true,nm:"Broad / Tuck Jumps",s:"4 × 3–5 (P2+)",why:"VERT and explosiveness, no equipment. Train fast force fresh, before the grind. Land soft on grass when possible.",cues:["Max effort each rep","Stick the landing","Full rest between sets"],alt:"Pogo hops for ankle stiffness"},
     {id:"t_split",nm:"Split Squat (backpack)",s:"3 × 12/leg",why:"Single-leg strength + balance with a loaded backpack. Keeps the legs growing and the hips healthy on the road.",cues:["Drop straight down","Front heel down","Tall torso"],alt:"Step-ups onto a chair"},
     {id:"t_slrdl",nm:"Single-Leg RDL",s:"3 × 10/leg",why:"Bodyweight hinge + balance — hamstrings and the hip-hinge your back needs, with built-in core demand.",cues:["Hips square","Reach the leg back","Slow & controlled"],alt:"Add a backpack to load it"},
     {id:"t_nord",nm:"Nordic Curl Negative",s:"3 × 5",why:"Anchor the feet, lower slowly. The most powerful hamstring strengthener that exists — and the #1 hamstring-injury preventer for athletes.",cues:["Resist the whole way down","Hands ready to catch","Quality over quantity"],alt:"Sliding leg curl on a towel"},
@@ -547,7 +550,7 @@ const ATHLETIC={
 const SLEEP={
   needHrs:"8.5–9.5",
   points:[
-    {t:"You grow when you sleep, not when you lift",d:"Lifting is the signal; sleep is the build. ~70% of daily growth hormone releases in deep sleep, and that's when muscle protein synthesis peaks. As a 22-year-old hard-gainer training hard, aim for <b>8.5–9.5 hours</b> — under 7 measurably cuts muscle gain and raises injury risk."},
+    {t:"You grow when you sleep, not when you lift",d:"Lifting is the signal; sleep is the build. ~70% of daily growth hormone releases in deep sleep, and that's when muscle protein synthesis peaks. As a {age}-year-old hard-gainer training hard, aim for <b>8.5–9.5 hours</b> — under 7 measurably cuts muscle gain and raises injury risk."},
     {t:"Consistency beats total hours",d:"Same sleep and wake time (±30 min) every day, weekends included. A steady circadian rhythm improves deep sleep quality more than 'catching up' ever can."},
     {t:"Protect the last hour",d:"No screens 45–60 min before bed (blue light delays melatonin). Cool (~18°C/65°F), dark, quiet room. Caffeine has a ~6-hour half-life — cut it off by early afternoon."},
     {t:"Naps are a tool",d:"A 20-minute nap (or a full 90-min cycle) on hard training days boosts recovery and power output. Avoid 30–60 min naps — you wake mid-deep-sleep groggy."},
@@ -593,16 +596,16 @@ const PROTEIN_SOURCES=[
 const PHASES=[
   {n:1,t:"Mobility & Structural Baseline",when:"Weeks 1–8",
    aim:"Eliminate the back pain and unlock the hips BEFORE chasing size. Build the movement foundation, learn the lifts, and ramp work capacity. Loads stay submaximal on purpose — form and consistency are the only goals.",
-   diff:{Reps:"10–15",Effort:"3–4 reps in reserve",Sets:"10–12 / muscle / wk",Power:"None — landings & pogos only",Cardio:"2× zone-2, 20 min",Calories:"+250–350 (lean ramp)",Focus:"Move well · work capacity"},
-   bench:["Daily mobility done 5+ days/week","Zero back pain during all training","Toe-touch gap within 8 cm (ankle bone)","Pain-free bodyweight hinge & goblet squat to depth","10 strict push-ups · 5 assisted pull-ups","Soft, silent, balanced jump landings","Bodyweight ~172–175 lb"]},
+   diff:{Reps:"Listed range, light & strict",Effort:"3–4 reps in reserve",Sets:"10–12 / muscle / wk",Power:"None — landings & pogos only",Cardio:"2× zone-2, 20 min",Calories:"+250–350 (lean ramp)",Focus:"Move well · work capacity"},
+   bench:["Daily mobility done 5+ days/week","Zero back pain during all training","Toe-touch gap within 8 cm (ankle bone)","Pain-free bodyweight hinge & goblet squat to depth","10 strict push-ups · 5 assisted pull-ups","Soft, silent, balanced jump landings","Bodyweight ~{p1lo}–{p1hi} lb"]},
   {n:2,t:"Hypertrophy & Work Capacity",when:"Months 3–9",
-   aim:"The mass-building engine. Now that you move well, drive volume on the delts and back, run a steady surplus, and add load weekly. This is where the V-taper appears and most of your 25–30 lb arrives. Plyos and the trap-bar deadlift enter here.",
-   diff:{Reps:"8–12",Effort:"1–2 reps in reserve",Sets:"14–18 / muscle / wk",Power:"1×/wk box & broad jumps",Cardio:"1–2× zone-2, 20–30 min",Calories:"+350–500 surplus",Focus:"Size · width · thickness"},
-   bench:["DB shoulder press 70 lb × 8 each","Chest-supported row 80 lb × 10","8–10 strict bodyweight pull-ups","Flat DB press ~75 lb × 8 each","Trap-bar deadlift pain-free at ~1× bodyweight","60s+ dead hang (grip)","Shoulder width +2.5 cm; bodyweight ~183–188 lb"]},
+   aim:"The mass-building engine. Now that you move well, drive volume on the delts and back, run a steady surplus, and add load weekly. This is where the V-taper appears and most of your {span} lb arrives. Plyos and the trap-bar deadlift enter here.",
+   diff:{Reps:"Listed range, add load weekly",Effort:"1–2 reps in reserve",Sets:"14–18 / muscle / wk",Power:"1×/wk box & broad jumps",Cardio:"1–2× zone-2, 20–30 min",Calories:"+350–500 surplus",Focus:"Size · width · thickness"},
+   bench:["DB shoulder press 70 lb × 8 each","Chest-supported row 80 lb × 10","8–10 strict bodyweight pull-ups","Flat DB press ~75 lb × 8 each","Trap-bar deadlift pain-free at ~1× bodyweight","60s+ dead hang (grip)","Shoulder width +2.5 cm; bodyweight ~{p2lo}–{p3} lb"]},
   {n:3,t:"Absolute Strength, Power & Density",when:"Months 10–18+",
-   aim:"Convert size into hard, usable strength and finish the lean bulk. Loads climb, main-lift reps drop, carries get heavy, and reactive power work maxes the vert. Dial the surplus down to keep gains lean and reach 190–200 lb of solid, capable mass.",
-   diff:{Reps:"5–8 main · 8–12 accessory",Effort:"1–3 reps in reserve",Sets:"12–16 / muscle / wk",Power:"2×/wk depth jumps & bounds",Cardio:"1× + optional run build",Calories:"+200–300, then maintain",Focus:"Strength · power · density"},
-   bench:["Weighted pull-up +45 lb × 5","DB shoulder press 85–90 lb × 6 each","Trap-bar deadlift ~2× bodyweight, pain-free","Farmer's carry bodyweight/hand × 40 m","Visible, proportional V-taper at lean bodyfat","Standing vertical up 4–6 in from baseline","Bodyweight 190–200 lb · zero injuries"]}
+   aim:"Convert size into hard, usable strength and finish the lean bulk. Loads climb, main-lift reps drop, carries get heavy, and reactive power work maxes the vert. Dial the surplus down to keep gains lean and reach {glo}–{ghi} lb of solid, capable mass.",
+   diff:{Reps:"5–8 on main lifts · rest as listed",Effort:"1–3 reps in reserve",Sets:"12–16 / muscle / wk",Power:"2×/wk depth jumps & bounds",Cardio:"1× + optional run build",Calories:"+200–300, then maintain",Focus:"Strength · power · density"},
+   bench:["Weighted pull-up +45 lb × 5","DB shoulder press 85–90 lb × 6 each","Trap-bar deadlift ~2× bodyweight, pain-free","Farmer's carry bodyweight/hand × 40 m","Visible, proportional V-taper at lean bodyfat","Standing vertical up 4–6 in from baseline","Bodyweight {glo}–{ghi} lb · zero injuries"]}
 ];
 
 /* ============================================================
@@ -663,6 +666,9 @@ const SIMPLE_MOBILITY=[
   ["Jefferson curl / slow toe reach","5 slow"],
   ["McGill Big 3 (curl-up, side plank, bird-dog)","~2 min"]
 ];
+/* Phase 1 has no jump training yet ("landings & pogos only"), so the simple plan swaps its jumps until Phase 2 */
+const P1_JUMP=["Pogo hops + soft landings","3 × 10 easy"];
+function simpleMoves(day,mode){ const mv=SIMPLE[day][mode==='gym'?'gym':'bw']; return currentPhase()<2?mv.map(x=>/jump/i.test(x[0])?P1_JUMP:x):mv; }
 const ORDER=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const JS_DAY=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]; // getDay() index → key
 
@@ -684,15 +690,15 @@ function gainRate(){ const L=S.weightLog; if(L.length<3)return null; const cut=a
   const pts=L.filter(x=>x.date>=cut).map(x=>[daysBetween(cut,x.date),x.w]); if(pts.length<3||pts[pts.length-1][0]-pts[0][0]<14)return null;
   const n=pts.length,mx=pts.reduce((a,p)=>a+p[0],0)/n,my=pts.reduce((a,p)=>a+p[1],0)/n;
   const sxx=pts.reduce((a,p)=>a+(p[0]-mx)**2,0); return sxx?pts.reduce((a,p)=>a+(p[0]-mx)*(p[1]-my),0)/sxx*7:null; }
-/* The plan's own rule, automated: aim ≈0.5 lb/wk; under 0.25 add ~200 kcal, over 0.75 drop ~200 */
-const RATE_LO=0.25, RATE_HI=0.75, CAL_STEP=200, ADJ_WAIT=14;
-function rateCoach(){ const r=gainRate(), last=lastWeighIn(), gap=last?daysBetween(last.date,todayStr()):0;
-  if(r===null)return {tone:'',msg:'<b>Rate of gain:</b> weigh in at least weekly for 2+ weeks and this will tell you whether to eat more or less.'};
+/* The plan's own rule, automated: outside the target band for your stage → add or drop ~200 kcal */
+const CAL_STEP=200, ADJ_WAIT=14;
+function rateCoach(){ const r=gainRate(), st=stage(), last=lastWeighIn(), gap=last?daysBetween(last.date,todayStr()):0;
+  if(r===null)return {tone:'',msg:`<b>Rate of gain:</b> weigh in at least weekly for 2+ weeks and this will tell you whether to eat more or less (target ${st.aim}).`};
   const rs=`${r>=0?'+':''}${r.toFixed(2)} lb/wk`;
   if(gap>10)return {tone:'warn',msg:`<b>Rate of gain: ${rs}</b> as of your last weigh-in ${gap} days ago. Log a fresh weigh-in in Metrics so your targets stay accurate.`};
-  if(r<RATE_LO)return {tone:'warn',delta:CAL_STEP,msg:`<b>Rate of gain: ${rs}</b> over the last 4 weeks, below the ~0.5 lb/wk target. Eat ~${CAL_STEP} kcal more per day (mostly carbs).`};
-  if(r>RATE_HI)return {tone:'warn',delta:-CAL_STEP,msg:`<b>Rate of gain: ${rs}</b> over the last 4 weeks, faster than ~0.5 lb/wk, so the extra is mostly fat. Eat ~${CAL_STEP} kcal less per day.${planWeek()<=4?' (Weeks 1–4 include water, glycogen and creatine weight, so only cut if it continues.)':''}`};
-  return {tone:'',msg:`<b>Rate of gain: ${rs}</b> over the last 4 weeks. On target, so keep eating exactly like this.`}; }
+  if(r<st.lo)return {tone:'warn',delta:CAL_STEP,msg:`<b>Rate of gain: ${rs}</b> over the last 4 weeks, below target (${st.aim}). Eat ~${CAL_STEP} kcal more per day (mostly carbs).`};
+  if(r>st.hi)return {tone:'warn',delta:-CAL_STEP,msg:`<b>Rate of gain: ${rs}</b> over the last 4 weeks, above target (${st.aim})${st.maintain?'':', so the extra is mostly fat'}. Eat ~${CAL_STEP} kcal less per day.${planWeek()<=4?' (Weeks 1–4 include water, glycogen and creatine weight, so only cut if it continues.)':''}`};
+  return {tone:'',msg:`<b>Rate of gain: ${rs}</b> over the last 4 weeks, on target (${st.aim}). Keep eating exactly like this.`}; }
 function coachNote(style=''){ const c=rateCoach(), la=S.lastCalAdj, wait=la&&daysBetween(la.date,todayStr())<ADJ_WAIT;
   const act=c.delta?(wait?`<div style="margin-top:6px">You changed calories by ${la.delta>0?'+':''}${la.delta} on ${esc(la.date)}. Give it 2 weeks before changing again.</div>`
     :`<div style="margin-top:10px"><button class="btn sm ${c.delta>0?'':'ghost'}" onclick="applyCalAdj(${c.delta})">${c.delta>0?'+':''}${c.delta} kcal to my daily target</button></div>`):'';
@@ -718,12 +724,31 @@ function backupAge(){ if(!S.lastBackup)return null; const d=Math.floor((Date.now
 function hasLoggedData(){ return S.weightLog.length>1||S.measure.length||S.sleepLog.length||Object.keys(S.trainLog).length||Object.keys(S.nutritionLog).length||Object.keys(S.dailyDone).length; }
 function backupNudge(){ const stale=!S.lastBackup||(Date.now()-S.lastBackup)>14*864e5; if(!stale||!hasLoggedData())return '';
   return `<button class="note warn" style="display:block;width:100%;text-align:left;margin:0 0 16px;font-size:12.5px" onclick="goto('metrics')">💾 <b>${S.lastBackup?`Last backup was ${backupAge()}.`:'You haven\'t backed up your data yet.'}</b> Your logs live only on this phone — tap to save a backup file.</button>`; }
-function currentPhase(){ const w=curWeight(); if(w>=188)return 3; if(w>=176)return 2; return 1; }
+/* Phase lines scale with your start and goal (the original plan: 176 and 188 lb for 167 → 195) */
+function phaseCuts(){ const p=S.profile,span=p.goalWeight-p.startWeight; return {p2:Math.round(p.startWeight+span*0.32),p3:Math.round(p.startWeight+span*0.75)}; }
+/* Phase and goal only move forward: a light week just under a line doesn't undo them. They drop back only if
+   the average falls 3+ lb below the line, or the lines move because you changed start/goal weight. */
+function updateProgress(){ const w=curWeight(),c=phaseCuts(),raw=w>=c.p3?3:w>=c.p2?2:1; let ph=S.phaseAt||raw;
+  if(raw>ph||w<[0,0,c.p2,c.p3][ph]-3)ph=raw; S.phaseAt=ph;
+  const g=S.profile.goalWeight; if(w>=g)S.goalAt=S.goalAt||todayStr(); else if(w<g-3)S.goalAt=null; }
+function currentPhase(){ return S.phaseAt||1; }
+function atGoal(){ return !!S.goalAt; }
+/* Calorie surplus + target rate of gain per phase (midpoints of the phase table); at your goal it switches to maintenance */
+const STAGES=[{surplus:300,lo:0.25,hi:0.75,aim:'≈0.5 lb/wk',short:'+0.5 lb/wk'},{surplus:425,lo:0.25,hi:0.75,aim:'≈0.5 lb/wk',short:'+0.5 lb/wk'},{surplus:250,lo:0.1,hi:0.5,aim:'≈0.25 lb/wk',short:'+0.25 lb/wk'}];
+const MAINTAIN={surplus:0,lo:-0.25,hi:0.25,aim:'±0.25 lb/wk',short:'hold steady',maintain:true};
+function stage(){ return atGoal()?MAINTAIN:STAGES[currentPhase()-1]; }
+/* Age counts up from the day it was entered, so the calorie formula and the wording never go stale */
+function curAge(){ const p=S.profile; return p.age+Math.max(0,Math.floor(daysBetween(p.ageAsOf||todayStr(),todayStr())/365.25)); }
+const heightStr=()=>{const i=Math.round(S.profile.heightIn);return `${Math.floor(i/12)}'${i%12}"`;};
+/* {tokens} in the plan text → numbers from your profile */
+function fill(t){ const p=S.profile,c=phaseCuts(),span=p.goalWeight-p.startWeight;
+  const v={age:curAge(),span:Math.round(span),p1lo:Math.round(p.startWeight+span*0.18),p1hi:c.p2-1,p2lo:c.p3-5,p3:c.p3,glo:p.goalWeight-5,ghi:p.goalWeight+5};
+  return String(t).replace(/\{(\w+)\}/g,(m,k)=>k in v?v[k]:m); }
 function pct(v,a,b){ return Math.max(0,Math.min(100,(v-a)/(b-a)*100)); }
 function macros(){
   const w=curWeight(),act=S.profile.activity,cm=S.profile.heightIn*2.54,kg=w/2.205;
-  const bmr=10*kg+6.25*cm-5*S.profile.age+5, tdee=bmr*act;
-  const cal=Math.round((tdee+420+(S.profile.calAdj||0))/10)*10, protein=Math.round(w*1.0), fat=Math.round(w*0.45);
+  const bmr=10*kg+6.25*cm-5*curAge()+5, tdee=bmr*act;
+  const cal=Math.round((tdee+stage().surplus+(S.profile.calAdj||0))/10)*10, protein=Math.round(w*1.0), fat=Math.round(w*0.45);
   const carbs=Math.round((cal-protein*4-fat*9)/4);
   return {cal,protein,fat,carbs,tdee:Math.round(tdee)};
 }
@@ -751,7 +776,8 @@ function mobilityStreak(){ let s=0; const d=new Date(); if(!hasMob(todayStr())) 
   while(true){ const ds=ymd(d); if(hasMob(ds)){s++;d.setDate(d.getDate()-1);} else break; } return s; }
 function weekStart(){ const n=new Date(); const off=(n.getDay()+6)%7; const m=new Date(n); m.setDate(n.getDate()-off); m.setHours(0,0,0,0); return m; }
 function liftsThisWeek(){ const m=weekStart(); const set=new Set(); Object.values(S.trainLog).forEach(arr=>arr.forEach(e=>{ if(parseYmd(e.date)>=m) set.add(e.date); })); Object.keys(S.dailyDone).forEach(ds=>{ if(S.dailyDone[ds]&&parseYmd(ds)>=m) set.add(ds); }); return set.size; }
-function nextPhaseInfo(){ const w=curWeight(); if(w<176)return{lb:Math.max(0,176-w),label:"to Phase 2"}; if(w<188)return{lb:Math.max(0,188-w),label:"to Phase 3"}; return{lb:0,label:"final phase — finish strong"}; }
+function nextPhaseInfo(){ const w=curWeight(),c=phaseCuts(),ph=currentPhase(); if(atGoal())return{lb:0,label:"goal reached — hold it"};
+  if(ph===1)return{lb:Math.max(0,c.p2-w),label:"to Phase 2"}; if(ph===2)return{lb:Math.max(0,c.p3-w),label:"to Phase 3"}; return{lb:Math.max(0,S.profile.goalWeight-w),label:"to your goal"}; }
 
 /* ---------------- DASHBOARD ---------------- */
 function pgDash(){
@@ -765,15 +791,16 @@ function pgDash(){
     <p class="lead">Detrained ≠ starting from zero — you're a former athlete with muscle memory waiting to switch back on. This map is built around your exact targets: <b style="color:var(--ember)">wide shoulders</b>, a thick back, a crushing grip, strong legs and traps, and the explosive power for ball sports — all on a back that needs respect and dumbbell-only pressing.</p>
     <div class="grid g4" style="margin-top:24px">
       <div class="stat"><div class="lab">Bodyweight (avg)</div><div class="num">${w}<small> lb</small></div><div class="delta ${gained>=0?'up':'dn'}">${gained>=0?'▲':'▼'} ${Math.abs(gained).toFixed(1)} lb from start</div></div>
-      <div class="stat"><div class="lab">To Goal</div><div class="num">${Math.max(0,remain).toFixed(0)}<small> lb</small></div><div class="delta">target ${p.goalWeight} lb lean</div></div>
+      <div class="stat"><div class="lab">To Goal</div><div class="num">${atGoal()?'✓':Math.max(0,remain).toFixed(0)}<small>${atGoal()?'':' lb'}</small></div><div class="delta">${atGoal()?'goal reached · maintaining':`target ${p.goalWeight} lb lean`}</div></div>
       <div class="stat"><div class="lab">Phase</div><div class="num">${ph}<small> / 3</small></div><div class="delta" style="color:var(--ember)">${PHASES[ph-1].t.split('&')[0].split(',')[0].trim()}</div></div>
       <div class="stat"><div class="lab">Daily Fuel</div><div class="num">${fmt(m.cal)}<small> kcal</small></div><div class="delta">${m.protein}P · ${m.carbs}C · ${m.fat}F</div></div>
     </div>
     <div class="grid g2" style="margin-top:16px">
-      <div class="card"><div class="ch"><h3>Journey to ${p.goalWeight} lb</h3><span class="pill e">lean bulk</span></div>
+      <div class="card"><div class="ch"><h3>Journey to ${p.goalWeight} lb</h3><span class="pill e">${atGoal()?'maintain':'lean bulk'}</span></div>
         <div class="barwrap"><div class="barrow"><span>${p.startWeight} lb start</span><b>${w} lb</b><span>${p.goalWeight} lb goal</span></div>
         <div class="bar"><i style="width:${pct(w,p.startWeight,p.goalWeight)}%"></i></div>
-        <div class="barrow" style="color:var(--faint)"><span>${pct(w,p.startWeight,p.goalWeight).toFixed(0)}% there</span><span>aim ≈0.5 lb / wk</span></div></div>
+        <div class="barrow" style="color:var(--faint)"><span>${pct(w,p.startWeight,p.goalWeight).toFixed(0)}% there</span><span>aim ${stage().aim}</span></div></div>
+        ${atGoal()?`<div class="note"><b>🎉 Goal reached (${p.goalWeight} lb).</b> Calories are now at maintenance and training stays in Phase 3. To keep building, raise your goal weight in Metrics and the app picks it up from there.</div>`:''}
         ${coachNote()}</div>
       <div class="card"><div class="ch"><h3>This Week</h3><span class="pill">4 lifts · daily mobility</span></div><div id="weekmini"></div></div>
     </div>
@@ -866,7 +893,7 @@ function renderExos(){const box=$('#exolist');if(!box)return;const prog=trainMod
   list.forEach((ex,i)=>{const log=S.trainLog[ex.id]||[];const last=log.length?log[log.length-1]:null;
     const lastW=last&&last.sets.length?last.sets[last.sets.length-1].w:null;
     const tg=target(ex);
-    const node=el(`<div class="exo"><div class="top"><div class="idx">${i+1}</div><div class="nm">${ex.nm}${tg.flag?` <span class="upflag ${tg.flag==='later'?'later':''}">${tg.flag==='up'?'▲ add weight':'not yet'}</span>`:''}</div><div class="scheme">${ex.s}</div><div class="chev">▶</div></div>
+    const node=el(`<div class="exo"><div class="top"><div class="idx">${i+1}</div><div class="nm">${ex.nm}${tg.flag?` <span class="upflag ${tg.flag==='later'?'later':''}">${tg.flag==='up'?'▲ add weight':'not yet'}</span>`:''}</div><div class="scheme">${schemeFor(ex)}</div><div class="chev">▶</div></div>
       <div class="body"><div class="why"><b>Why:</b> ${ex.why}</div><div>${ex.cues.map(c=>`<span class="cue">${c}</span>`).join('')}</div>
       ${ex.alt?`<div class="alt"><b>No-gym swap:</b> ${ex.alt}</div>`:''}
       <div class="target ${tg.flag==='up'?'go':''}">${tg.msg}</div>
@@ -879,6 +906,10 @@ function renderExos(){const box=$('#exolist');if(!box)return;const prog=trainMod
       logSet(ex.id,wv,rv,node);startRest(restFor(ex));};
     box.appendChild(node);});}
 const fmtSets=sets=>sets.map(s=>`${s.w||'BW'}×${s.r}`).join('  ');
+/* Best set ever: highest estimated 1-rep max (Epley) for weighted sets; most reps (or seconds) for bodyweight work */
+const e1rm=s=>s.w?s.w*(1+s.r/30):0;
+const beats=(a,b)=>a.w||b.w?e1rm(a)>e1rm(b):a.r>b.r;
+function bestSet(log){let best=null;log.forEach(e=>e.sets.forEach(s=>{if(!best||beats(s,best))best={w:s.w,r:s.r,date:e.date};}));return best;}
 /* Which session the weekly schedule puts on each lift day (index into the GYM / TRAVEL session lists) */
 const SESSION_DAY={gym:{Mon:0,Tue:1,Thu:2,Fri:3},travel:{Mon:0,Tue:2,Thu:1,Fri:2}};
 function todaysSession(mode){const i=SESSION_DAY[mode][JS_DAY[new Date().getDay()]];return i==null?null:Object.keys(mode==='gym'?GYM:TRAVEL)[i];}
@@ -886,11 +917,13 @@ function todaysSession(mode){const i=SESSION_DAY[mode][JS_DAY[new Date().getDay(
 function parseScheme(s){const m=/^(\d+) × (\d+)(?:–(\d+))?(?:\/leg|\/side| each)?(?: \(P\d\+?\))?$/.exec(s);return m?{sets:+m[1],lo:+m[2],hi:+(m[3]||m[2])}:null;}
 const round5=n=>Math.max(5,Math.round(n/5)*5);
 /* Today's target from the last session: the plan's own progression rule (top of the range on every set → add load) */
-function target(ex){const log=S.trainLog[ex.id]||[],t=todayStr(),prev=log.filter(x=>x.date!==t&&x.sets.length).pop(),sc=parseScheme(ex.s);
+/* Phase 3 drops the main lifts to 5–8 reps (phase table); everything else keeps its listed range */
+function schemeFor(ex){return ex.main&&currentPhase()===3?ex.s.replace(/× [\d–]+/,'× 5–8'):ex.s;}
+function target(ex){const log=S.trainLog[ex.id]||[],t=todayStr(),prev=log.filter(x=>x.date!==t&&x.sets.length).pop(),sc=parseScheme(schemeFor(ex));
   const need=(/\(P(\d)/.exec(ex.s)||[])[1];
   if(need&&currentPhase()<need)return {flag:'later',msg:`<b>Not yet — this starts in Phase ${need}.</b> For now, practise soft, silent landings with a few easy pogo hops, or skip it.`};
   if(ex.plyo)return {msg:`<b>Quality, not quantity:</b> every rep max effort with a crisp, quiet landing. Full rest; stop if landings get sloppy.${prev?` Last time: ${fmtSets(prev.sets)}.`:''}`};
-  if(!prev)return {msg:sc?`<b>First time:</b> pick a weight you can do for ${sc.hi} reps with ~2 left in the tank, then log every set. That's your baseline.`:'<b>First time:</b> log what you do today. That\'s your baseline to beat.'};
+  if(!prev)return {msg:sc?`<b>First time:</b> pick a weight you can do for ${sc.hi} reps with ${['3–4','1–2','1–3'][currentPhase()-1]} left in the tank (Phase ${currentPhase()} effort), then log every set. That's your baseline.`:'<b>First time:</b> log what you do today. That\'s your baseline to beat.'};
   const topW=Math.max(...prev.sets.map(x=>x.w||0)),bw=!topW,top=prev.sets.filter(x=>(x.w||0)===topW),last=fmtSets(prev.sets);
   if(isDeloadWeek())return {msg:`<b>Deload week:</b> ~${Math.max(1,Math.round((sc?sc.sets:prev.sets.length)*0.6))} easy sets${bw?'':` at ~${round5(topW*0.8)} lb`}, well short of failure. Last time: ${last}.`};
   if(!sc)return {msg:`<b>Beat last time</b> (${last}) by a rep, a few seconds or a few metres.`};
@@ -898,13 +931,17 @@ function target(ex){const log=S.trainLog[ex.id]||[],t=todayStr(),prev=log.filter
     :`<b>You hit ${sc.hi} on every set at ${topW} lb.</b> Go up to the next weight (~${topW+5} lb) and aim for ${sc.lo}+ reps.`};
   return {msg:`<b>Stay at ${bw?'bodyweight':topW+' lb'}</b> and add a rep or two until every set reaches ${sc.hi}. Last time: ${last}.`};}
 /* Rest between sets: ~2 min for heavier compounds (≤10 reps), ~90 s for isolation, plyos and holds */
-function restFor(ex){const sc=parseScheme(ex.s);return !ex.plyo&&sc&&sc.hi<=10&&sc.hi>5?120:90;}
+function restFor(ex){const sc=parseScheme(schemeFor(ex));return !ex.plyo&&sc&&sc.hi<=10&&sc.hi>5?120:90;}
 function renderLogline(id,node){const log=S.trainLog[id]||[];const t=todayStr();const e=log.find(x=>x.date===t);const prev=log.filter(x=>x.date!==t&&x.sets.length).pop();
   const box=node.querySelector('.logline');
+  const best=bestSet(log);
   box.innerHTML=(e&&e.sets.length?`Today: <b>${fmtSets(e.sets)}</b><button class="undo">undo last</button>`:'')+
-    (prev?`<div>Last time (${prev.date}): ${fmtSets(prev.sets)}</div>`:(e&&e.sets.length?'':'No log yet — set your baseline today.'));
+    (prev?`<div>Last time (${esc(prev.date)}): ${fmtSets(prev.sets)}</div>`:(e&&e.sets.length?'':'No log yet — set your baseline today.'))+
+    (best&&prev?`<div>Best: <span style="color:var(--gold)">${fmtSets([best])}</span> (${esc(best.date)})</div>`:'');
   const u=box.querySelector('.undo');if(u)u.onclick=()=>{e.sets.pop();if(!e.sets.length)S.trainLog[id]=log.filter(x=>x!==e);renderLogline(id,node);persist();};}
-function logSet(id,w,r,node){const t=todayStr();if(!S.trainLog[id])S.trainLog[id]=[];let e=S.trainLog[id].find(x=>x.date===t);if(!e){e={date:t,sets:[]};S.trainLog[id].push(e);}e.sets.push({w:w?Number(w):null,r:Number(r)});node.querySelector('.r').value='';renderLogline(id,node);persist();}
+function logSet(id,w,r,node){const t=todayStr();if(!S.trainLog[id])S.trainLog[id]=[];const prevBest=bestSet(S.trainLog[id]);
+  let e=S.trainLog[id].find(x=>x.date===t);if(!e){e={date:t,sets:[]};S.trainLog[id].push(e);}const set={w:w?Number(w):null,r:Number(r)};e.sets.push(set);
+  node.querySelector('.r').value='';renderLogline(id,node);persist(prevBest&&beats(set,prevBest)?`🏆 New best: ${fmtSets([set])}`:undefined);}
 
 /* ---------------- SCHEDULE ---------------- */
 function pgSchedule(){return `<div class="page on" id="p-schedule">
@@ -928,9 +965,9 @@ function renderWeekFull(){const box=$('#weekfull');if(!box)return;box.innerHTML=
 function pgRecovery(){const last=S.sleepLog.length?S.sleepLog[S.sleepLog.length-1].h:null;return `<div class="page on" id="p-recovery">
   <div class="ttl">Recovery & Sleep</div>
   <h1 class="h-big">You grow in the dark.</h1>
-  <p class="lead">Training is only the signal — <b>sleep and recovery are where the muscle is actually built</b>. Skimp here and the best program on earth stalls. For a 22-year-old training this hard, the target is <b>${SLEEP.needHrs} hours a night</b>, consistently.</p>
+  <p class="lead">Training is only the signal — <b>sleep and recovery are where the muscle is actually built</b>. Skimp here and the best program on earth stalls. For a ${curAge()}-year-old training this hard, the target is <b>${SLEEP.needHrs} hours a night</b>, consistently.</p>
   <div class="grid g2" style="margin-top:22px">
-    <div class="card"><div class="ch"><h3>Sleep — the #1 supplement</h3><span class="pill e">${SLEEP.needHrs} hrs</span></div><ul class="tip-list">${SLEEP.points.map(p=>`<li><b>${p.t}.</b> ${p.d}</li>`).join('')}</ul></div>
+    <div class="card"><div class="ch"><h3>Sleep — the #1 supplement</h3><span class="pill e">${SLEEP.needHrs} hrs</span></div><ul class="tip-list">${SLEEP.points.map(p=>`<li><b>${p.t}.</b> ${fill(p.d)}</li>`).join('')}</ul></div>
     <div><div class="card"><div class="ch"><h3>Log last night</h3></div>
         <div style="display:flex;gap:10px;align-items:flex-end"><div style="flex:1"><label class="fld">Hours slept</label><input type="number" inputmode="decimal" id="sleepin" step="0.25" placeholder="${last||'8.5'}"></div><button class="btn" id="sleeplog">Log</button></div>
         <div id="sleepstat" style="margin-top:14px"></div><div id="sleepchart" style="margin-top:8px"></div>
@@ -947,10 +984,10 @@ function renderSleep(){const last=S.sleepLog.slice(-7);const avg=last.length?(la
 function pgNutrition(){const m=macros(),w=curWeight();return `<div class="page on" id="p-nutrition">
   <div class="ttl">Pillar D — Nutrition & Fuel</div>
   <h1 class="h-big">Fuel the frame.</h1>
-  <p class="lead">A 6'2"+ hard-gainer's #1 failure point is <b>under-eating without realising it</b> — big frame, fast metabolism, easily full. The fix is calorie <i>density</i> and consistency. Targets recalculate from your logged bodyweight automatically.</p>
+  <p class="lead">A ${heightStr()} hard-gainer's #1 failure point is <b>under-eating without realising it</b> — big frame, fast metabolism, easily full. The fix is calorie <i>density</i> and consistency. Targets recalculate from your logged bodyweight automatically.</p>
   <div class="grid g4" style="margin:22px 0 16px">
     <div class="stat"><div class="lab">Maintenance (TDEE)</div><div class="num">${fmt(m.tdee)}<small> kcal</small></div><div class="delta">est. from ${w} lb</div></div>
-    <div class="stat" style="border-color:var(--ember)"><div class="lab" style="color:var(--ember)">Eat / day</div><div class="num">${fmt(m.cal)}<small> kcal</small></div><div class="delta up">▲ lean-bulk surplus${S.profile.calAdj?` (${S.profile.calAdj>0?'+':''}${S.profile.calAdj} adj.)`:''}</div></div>
+    <div class="stat" style="border-color:var(--ember)"><div class="lab" style="color:var(--ember)">Eat / day</div><div class="num">${fmt(m.cal)}<small> kcal</small></div><div class="delta up">${atGoal()?'= maintenance':'▲ lean-bulk surplus'}${S.profile.calAdj?` (${S.profile.calAdj>0?'+':''}${S.profile.calAdj} adj.)`:''}</div></div>
     <div class="stat"><div class="lab">Protein</div><div class="num">${m.protein}<small> g</small></div><div class="delta">≈ 1 g/lb · ${fmt(m.protein*4)} kcal</div></div>
     <div class="stat"><div class="lab">Carbs / Fat</div><div class="num">${m.carbs}<small>/${m.fat}g</small></div><div class="delta">fuel + hormones</div></div>
   </div>
@@ -966,13 +1003,13 @@ function pgNutrition(){const m=macros(),w=curWeight();return `<div class="page o
   </div>
   <div class="card" style="margin-top:16px"><div class="ch"><h3>Why these numbers</h3></div>
     <table><tbody>
-      <tr><td><b>Calories = TDEE + ~420</b>${S.profile.calAdj?` ${S.profile.calAdj>0?'+':'−'} ${Math.abs(S.profile.calAdj)} adjustment`:''}</td><td>A modest surplus keeps gains lean. You can't force muscle faster by eating more — you just add fat. Steer by the scale, not the math.</td></tr>
+      <tr><td><b>Calories = TDEE + ${stage().surplus}</b>${S.profile.calAdj?` ${S.profile.calAdj>0?'+':'−'} ${Math.abs(S.profile.calAdj)} adjustment`:''}</td><td>${atGoal()?'You\'re at your goal, so calories sit at maintenance to hold the size you built.':`The Phase ${currentPhase()} surplus.`} It follows the phase table (+300 → +425 → +250, then maintenance at your goal). A modest surplus keeps gains lean: you can't force muscle faster by eating more, you just add fat.</td></tr>
       <tr><td><b>Protein 1 g/lb</b></td><td>Maximises muscle protein synthesis with margin for a hard-gainer. The single most important macro for building.</td></tr>
       <tr><td><b>Fat 0.45 g/lb</b></td><td>Protects testosterone, hormones and joints. Don't drop lower chasing carbs.</td></tr>
       <tr><td><b>Carbs (the rest)</b></td><td>Your training fuel and easiest calorie lever. Hard-gainers thrive on high carbs — rice, oats, potatoes, fruit, bread.</td></tr>
       <tr><td><b>Hydration</b></td><td>~3–4 L water/day. Muscle is ~75% water; even mild dehydration drops strength and pumps. More on training and hot days.</td></tr>
     </tbody></table>
-    <div class="note"><b>Tune by the scale, not the spreadsheet.</b> If your 7-day average weight isn't climbing ~0.25–0.5% (≈0.5 lb/wk), add 200 kcal of carbs/fat. Climbing too fast? Drop 200. Re-log weight in Metrics and every number here follows you.</div></div>
+    <div class="note"><b>Tune by the scale, not the spreadsheet.</b> The rate-of-gain check at the top of this page does it for you: weigh in weekly and it tells you when to add or drop ~200 kcal. Every number here follows your 7-day average weight.</div></div>
   <div class="card" style="margin-top:16px"><div class="ch"><h3>Today's intake</h3><span class="pill" id="kcaltag"></span></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
       <div style="flex:2;min-width:140px"><label class="fld">Food / meal</label><input type="text" id="fname" placeholder="e.g. Mass shake"></div>
@@ -1005,23 +1042,27 @@ window.quickFood=quickFood;
 /* ---------------- TIMELINE ---------------- */
 function pgTimeline(){return `<div class="page on" id="p-timeline">
   <div class="ttl">Pillar C — Timeline & Phases</div>
-  <h1 class="h-big">25–30 lb, the honest way.</h1>
+  <h1 class="h-big">${Math.round(S.profile.goalWeight-S.profile.startWeight)} lb, the honest way.</h1>
   <p class="lead">As a former athlete regaining muscle, early progress is fast — muscle memory is real. But clean mass caps around <b>0.5–1 lb/month of true muscle</b> after the initial whoosh, so the full lean transformation is a <b>~18–24 month</b> project. Anyone promising it in 6 is selling fat or false hope. Each phase below changes the reps, effort, volume, power work and calories — tap to expand and check off benchmarks.</p>
   <div class="card" style="margin:22px 0 18px"><div class="ch"><h3>The arc at a glance</h3></div>
     <div class="barwrap">${PHASES.map(p=>{const done=(S.benchmarks[p.n]||[]).filter(Boolean).length;return `<div style="margin-bottom:6px"><div class="barrow"><span><b style="color:var(--ember)">Phase ${p.n}</b> · ${p.when}</span><span>${done}/${p.bench.length} benchmarks</span></div><div class="bar"><i style="width:${done/p.bench.length*100}%"></i></div></div>`;}).join('')}</div></div>
+  ${readinessNote()}
   <div id="phases"></div>
 </div>`;}
+/* Weight is only a proxy for readiness: flag it when the phase moved up but the previous phase's benchmarks lag behind */
+function readinessNote(){const ph=currentPhase();if(ph<2)return '';const prev=PHASES[ph-2],done=(S.benchmarks[ph-1]||[]).filter(Boolean).length;
+  return done<prev.bench.length-1?`<div class="note warn" style="margin:0 0 18px"><b>Your weight says Phase ${ph}, but only ${done}/${prev.bench.length} Phase ${ph-1} benchmarks are checked.</b> Weight is only a proxy. Keep Phase ${ph-1} effort (and hold off on the new power work) until the movement and pain-free benchmarks are solid, then check them off below.</div>`:'';}
 function renderPhases(){const box=$('#phases');if(!box)return;const cur=currentPhase();box.innerHTML='';
   PHASES.forEach(p=>{const locked=p.n>cur;
     const diffRows=Object.entries(p.diff).map(([k,v])=>`<tr><td style="color:var(--faint);width:120px">${k}</td><td><b>${v}</b></td></tr>`).join('');
     const node=el(`<div class="phase ${locked?'locked':''}"><div class="ph-head"><div class="ph-num">${p.n}</div><div class="ph-t"><h3>${p.t}</h3><div class="when">${p.when}${p.n===cur?' · YOU ARE HERE':''}</div></div><div class="chev" style="color:var(--faint);font-size:14px">▶</div></div>
-      <div class="ph-body" style="display:none"><p class="aim">${p.aim}</p>
+      <div class="ph-body" style="display:none"><p class="aim">${fill(p.aim)}</p>
         <div class="grid g2"><div><div class="eyebrow" style="margin-bottom:8px">How this phase differs</div><table><tbody>${diffRows}</tbody></table></div>
         <div><div class="eyebrow" style="margin-bottom:8px">Benchmarks — tap to mark done</div><div class="bm"></div></div></div></div></div>`);
     node.querySelector('.ph-head').onclick=()=>{const b=node.querySelector('.ph-body');const open=b.style.display==='none';b.style.display=open?'block':'none';node.querySelector('.ph-head .chev').style.transform=open?'rotate(90deg)':'';};
     if(p.n===cur)node.querySelector('.ph-body').style.display='block';
     const bm=node.querySelector('.bm');if(!S.benchmarks[p.n])S.benchmarks[p.n]=[];
-    p.bench.forEach((b,i)=>{const dn=!!S.benchmarks[p.n][i];const c=el(`<div class="chk ${dn?'done':''}"><div class="box">✓</div><div class="ct"><div class="t" style="font-size:13px">${b}</div></div></div>`);c.onclick=()=>{S.benchmarks[p.n][i]=!S.benchmarks[p.n][i];renderPhases();persist();};bm.appendChild(c);});
+    p.bench.forEach((b,i)=>{const dn=!!S.benchmarks[p.n][i];const c=el(`<div class="chk ${dn?'done':''}"><div class="box">✓</div><div class="ct"><div class="t" style="font-size:13px">${fill(b)}</div></div></div>`);c.onclick=()=>{S.benchmarks[p.n][i]=!S.benchmarks[p.n][i];renderPhases();persist();};bm.appendChild(c);});
     box.appendChild(node);});}
 
 /* ---------------- METRICS ---------------- */
@@ -1036,7 +1077,7 @@ function pgMetrics(){const p=S.profile;return `<div class="page on" id="p-metric
       <div style="font-size:12px;color:var(--muted);margin-top:6px">7-day average <b style="color:var(--ink)">${curWeight()} lb</b>${lastWeighIn()?` · last weigh-in ${lastWeighIn().w} lb on ${esc(lastWeighIn().date)}`:''}. Phase and calorie targets follow the average, not one day.</div>
       ${recentList('weightLog','Recent weigh-ins',x=>`${x.w} lb`)}</div>
     <div class="card"><div class="ch"><h3>Plan settings</h3></div>
-      <div class="grid g2"><div><label class="fld">Start weight (lb)</label><input type="number" inputmode="decimal" id="setStart" value="${p.startWeight}"></div><div><label class="fld">Goal weight (lb)</label><input type="number" inputmode="decimal" id="setGoal" value="${p.goalWeight}"></div><div><label class="fld">Height (inches)</label><input type="number" inputmode="decimal" id="setH" value="${p.heightIn}"></div><div><label class="fld">Age</label><input type="number" inputmode="decimal" id="setAge" value="${p.age}"></div><div style="grid-column:1/-1"><label class="fld">Activity (1.4 sedentary → 1.8 very active)</label><input type="number" inputmode="decimal" id="setAct" step="0.05" value="${p.activity}"></div><div><label class="fld">Calorie adjust (kcal/day)</label><input type="number" inputmode="numeric" id="setAdj" step="50" value="${p.calAdj||0}"></div><div><label class="fld">Plan start date</label><input type="date" id="setDate" value="${esc(p.startDate||'')}" max="${todayStr()}"></div></div>
+      <div class="grid g2"><div><label class="fld">Start weight (lb)</label><input type="number" inputmode="decimal" id="setStart" value="${p.startWeight}"></div><div><label class="fld">Goal weight (lb)</label><input type="number" inputmode="decimal" id="setGoal" value="${p.goalWeight}"></div><div><label class="fld">Height (inches)</label><input type="number" inputmode="decimal" id="setH" value="${p.heightIn}"></div><div><label class="fld">Age</label><input type="number" inputmode="numeric" id="setAge" value="${curAge()}"></div><div style="grid-column:1/-1"><label class="fld">Activity (1.4 sedentary → 1.8 very active)</label><input type="number" inputmode="decimal" id="setAct" step="0.05" value="${p.activity}"></div><div><label class="fld">Calorie adjust (kcal/day)</label><input type="number" inputmode="numeric" id="setAdj" step="50" value="${p.calAdj||0}"></div><div><label class="fld">Plan start date</label><input type="date" id="setDate" value="${esc(p.startDate||'')}" max="${todayStr()}"></div></div>
       <div style="font-size:11.5px;color:var(--faint);margin-top:8px">Calorie adjust is added to the formula; the rate-of-gain tip can set it for you. Plan start sets the week count and when deload weeks fall (every ${DELOAD_EVERY}th week). You're in ${weekLine()}.</div>
       <button class="btn steel" id="savesettings" style="margin-top:14px">Save settings</button></div>
   </div>
@@ -1066,7 +1107,7 @@ function renderMetrics(){drawLine('#wchart',S.weightLog.map(x=>x.w),{unit:'lb',g
 
 /* ---------------- PRINT MASTER SHEET ---------------- */
 function pgPrint(){const m=macros();
-  const gymList=Object.entries(GYM).map(([day,ex])=>`<tr><td><b>${day}</b></td><td>${ex.map(e=>`${e.nm} <span class="tm">${e.s}</span>`).join(' · ')}</td></tr>`).join('');
+  const gymList=Object.entries(GYM).map(([day,ex])=>`<tr><td><b>${day}</b></td><td>${ex.map(e=>`${e.nm} <span class="tm">${schemeFor(e)}</span>`).join(' · ')}</td></tr>`).join('');
   const travelList=Object.entries(TRAVEL).map(([day,ex])=>`<tr><td><b>${day}</b></td><td>${ex.map(e=>`${e.nm} <span class="tm">${e.s}</span>`).join(' · ')}</td></tr>`).join('');
   return `<div class="page on" id="p-print">
   <div class="printhide" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
@@ -1076,7 +1117,7 @@ function pgPrint(){const m=macros();
   </div>
 
   <div class="card" style="margin-top:20px"><h2 style="font-size:24px;color:var(--ember)">THE BLUEPRINT — Master Sheet</h2>
-    <p style="font-size:12.5px;color:var(--muted);margin:6px 0 0">Goal: ${S.profile.startWeight} → ${S.profile.goalWeight} lb lean · Wide shoulders, big back, strong grip, explosive · 6'2"+ hard-gainer</p></div>
+    <p style="font-size:12.5px;color:var(--muted);margin:6px 0 0">Goal: ${S.profile.startWeight} → ${S.profile.goalWeight} lb lean · Wide shoulders, big back, strong grip, explosive · ${heightStr()} hard-gainer</p></div>
 
   <div class="card" style="margin-top:16px"><h3>① Daily Mobility (~12 min, anywhere)</h3>
     <table><tbody>${MOBILITY.map((x,i)=>`<tr><td class="mono" style="width:24px">${i+1}</td><td><b>${x.t}</b> — ${x.d}</td><td class="tm">${x.tag}</td></tr>`).join('')}</tbody></table></div>
@@ -1093,7 +1134,7 @@ function pgPrint(){const m=macros();
 
   <div class="card" style="margin-top:16px"><h3>⑤ Nutrition (auto from ${curWeight()} lb)</h3>
     <table><tbody>
-      <tr><td><b>Calories</b></td><td class="tm">${fmt(m.cal)} kcal/day</td><td>lean-bulk surplus over ~${fmt(m.tdee)} maintenance</td></tr>
+      <tr><td><b>Calories</b></td><td class="tm">${fmt(m.cal)} kcal/day</td><td>${atGoal()?'maintenance':`+${stage().surplus} lean-bulk surplus over ~${fmt(m.tdee)} maintenance`}</td></tr>
       <tr><td><b>Protein</b></td><td class="tm">${m.protein} g</td><td>~1 g/lb · 4–5 feeds of 30–50 g · whole food first</td></tr>
       <tr><td><b>Carbs</b></td><td class="tm">${m.carbs} g</td><td>training fuel · rice, oats, potato, fruit, bread</td></tr>
       <tr><td><b>Fat</b></td><td class="tm">${m.fat} g</td><td>hormones & joints · don't go lower</td></tr>
@@ -1132,9 +1173,9 @@ function pgDaily(){
     <div id="dailybody"></div>
   </div>
   <div class="printonly"><div style="margin-bottom:10px"><h2 style="font-size:22px;color:var(--ember)">THE SIMPLE WEEK — do this every week</h2><p style="font-size:12px;color:#444">Add a rep or a little weight whenever it feels easy. Bodyweight shown — see the app for gym swaps.</p></div>
-    <div class="pweek">${ORDER.map(k=>{const d=SIMPLE[k];return `<div class="card"><h3 style="font-size:16px">${k} — ${d.title}</h3><div style="font-size:11.5px;color:#555;margin:2px 0 6px">${d.mission}</div>${d.bw.map(x=>`<div style="font-size:12.5px;padding:2px 0"><b>${x[0]}</b> — ${x[1]}</div>`).join('')}</div>`;}).join('')}
+    <div class="pweek">${ORDER.map(k=>{const d=SIMPLE[k];return `<div class="card"><h3 style="font-size:16px">${k} — ${d.title}</h3><div style="font-size:11.5px;color:#555;margin:2px 0 6px">${d.mission}</div>${simpleMoves(k,'bw').map(x=>`<div style="font-size:12.5px;padding:2px 0"><b>${x[0]}</b> — ${x[1]}</div>`).join('')}</div>`;}).join('')}
     <div class="card"><h3 style="font-size:16px">EVERY DAY — Mobility (~8 min)</h3>${SIMPLE_MOBILITY.map(x=>`<div style="font-size:12.5px;padding:2px 0"><b>${x[0]}</b> — ${x[1]}</div>`).join('')}</div>
-    <div class="card"><h3 style="font-size:16px">EVERY DAY — Fuel & Sleep</h3><div style="font-size:12.5px;padding:2px 0">Eat <b>${fmt(m.cal)} kcal</b> · <b>${m.protein}g protein</b> · ${m.carbs}g carbs · ${m.fat}g fat</div><div style="font-size:12.5px;padding:2px 0">4 meals + 1 shake · protein every meal · 3–4 L water</div><div style="font-size:12.5px;padding:2px 0">Creatine 5g daily · Sleep ${SLEEP.needHrs} hrs</div><div style="font-size:12.5px;padding:2px 0">Weigh weekly (aim +0.5 lb/wk) · goal ${S.profile.goalWeight} lb · ~18–24 months</div></div>
+    <div class="card"><h3 style="font-size:16px">EVERY DAY — Fuel & Sleep</h3><div style="font-size:12.5px;padding:2px 0">Eat <b>${fmt(m.cal)} kcal</b> · <b>${m.protein}g protein</b> · ${m.carbs}g carbs · ${m.fat}g fat</div><div style="font-size:12.5px;padding:2px 0">4 meals + 1 shake · protein every meal · 3–4 L water</div><div style="font-size:12.5px;padding:2px 0">Creatine 5g daily · Sleep ${SLEEP.needHrs} hrs</div><div style="font-size:12.5px;padding:2px 0">Weigh weekly (aim ${stage().short}) · goal ${S.profile.goalWeight} lb · ~18–24 months</div></div>
     </div></div>
   </div>`;
 }
@@ -1143,7 +1184,7 @@ function renderDaily(){
   if(chips){ chips.innerHTML=''; const today=JS_DAY[new Date().getDay()];
     ORDER.forEach(k=>{ const b=el(`<button class="daychip ${k===dailyDay?'on':''} ${k===today?'today':''}">${k}</button>`); b.onclick=()=>{dailyDay=k;renderDaily();}; chips.appendChild(b); }); }
   const today=JS_DAY[new Date().getDay()];
-  const d=SIMPLE[dailyDay]; const moves=dailyMode==='gym'?d.gym:d.bw; const m=macros();
+  const d=SIMPLE[dailyDay]; const moves=simpleMoves(dailyDay,dailyMode); const m=macros();
   const accent=d.type==='rest'?'var(--steel)':d.type==='opt'?'var(--gold)':'var(--ember)';
   const isRest=d.type!=='lift';
   const body=$('#dailybody'); if(!body)return;
@@ -1187,7 +1228,7 @@ function renderDaily(){
         <p style="font-size:12px;color:var(--muted);margin:12px 0 0">One full rest day a week (Sunday). Ease off, don't stop moving.</p></div>
       <div class="card"><div class="ch"><h3>Aim & progress</h3><span class="pill">the goal</span></div>
         <div class="simple-move"><div class="smn">Goal weight</div><div class="smt">${S.profile.goalWeight} lb</div></div>
-        <div class="simple-move"><div class="smn">Weigh-in</div><div class="smt">+0.5 lb/wk</div></div>
+        <div class="simple-move"><div class="smn">Weigh-in</div><div class="smt">${stage().short}</div></div>
         <div class="simple-move"><div class="smn">Tape</div><div class="smt">every 4 wks</div></div>
         <div class="simple-move"><div class="smn">Timeline</div><div class="smt">~18–24 mo</div></div>
         <p style="font-size:12px;color:var(--muted);margin:12px 0 0">Phase moves up on its own as you gain. Just keep adding reps/weight and eating.</p></div>
@@ -1260,7 +1301,7 @@ function wireMetrics(){renderMetrics();
     if(Object.values(m).some(v=>typeof v==='number'&&!(v>=2&&v<=100)))return bad('Measurements are in inches (2–100)');
     const same=S.measure.find(x=>x.date===m.date);if(same)Object.keys(m).forEach(k=>{if(m[k]!=null)same[k]=m[k];});else upsertDay(S.measure,m);
     ['#mS','#mC','#mW','#mA','#mF','#mT'].forEach(s=>$(s).value='');renderMetrics();persist();};
-  $('#savesettings').onclick=()=>{const P=S.profile,n={startWeight:+$('#setStart').value||P.startWeight,goalWeight:+$('#setGoal').value||P.goalWeight,heightIn:+$('#setH').value||P.heightIn,age:+$('#setAge').value||P.age,activity:+$('#setAct').value||P.activity,calAdj:Math.round(+$('#setAdj').value)||0,startDate:$('#setDate').value||P.startDate};
+  $('#savesettings').onclick=()=>{const P=S.profile,n={startWeight:+$('#setStart').value||P.startWeight,goalWeight:+$('#setGoal').value||P.goalWeight,heightIn:+$('#setH').value||P.heightIn,age:+$('#setAge').value||curAge(),ageAsOf:todayStr(),activity:+$('#setAct').value||P.activity,calAdj:Math.round(+$('#setAdj').value)||0,startDate:$('#setDate').value||P.startDate};
     if(!(n.goalWeight>n.startWeight))return bad('Goal weight must be above start weight','#setGoal');if(!(n.heightIn>=48&&n.heightIn<=96))return bad('Height is in inches (48–96)','#setH');
     if(!(n.age>=13&&n.age<=99))return bad('Check your age','#setAge');if(!(n.activity>=1.2&&n.activity<=2.2))return bad('Activity should be 1.2–2.2','#setAct');
     if(Math.abs(n.calAdj)>1500)return bad('Calorie adjust should be within ±1500','#setAdj');if(n.startDate>todayStr())return bad('Plan start can\'t be in the future','#setDate');
@@ -1339,7 +1380,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==
 
 (function(){const raw=store.get(KEY);
   let data=null; if(raw){try{data=JSON.parse(raw);}catch(e){data=null;}}
-  S=normalize(data);
+  S=normalize(data); updateProgress();
   render(PAGES[UI.page]?UI.page:'dash');
 })();
 
